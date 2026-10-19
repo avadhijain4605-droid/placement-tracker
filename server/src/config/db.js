@@ -20,7 +20,7 @@ export async function connectDB() {
       serverSelectionTimeoutMS: 5000,
       maxPoolSize: 10,
     });
-
+    console.log("step1")
     isConnected = true;
     console.log(
       `[db] MongoDB connection established: ${conn.connection.host}/${conn.connection.name}`

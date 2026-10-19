@@ -6,7 +6,10 @@ import companiesRouter from "./routes/companies.js";
 import experiencesRouter from "./routes/experiences.js";
 import studentsRouter from "./routes/students.js";
 
+// Load server/.env first; fall back to the project-root .env (which persists
+// across environment resets) so MONGODB_URI and other secrets stay available.
 dotenv.config();
+dotenv.config({ path: "../.env" });
 
 const app = express();
 

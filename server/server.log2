@@ -6,3 +6,9 @@
 > placement-tracker-server@1.0.0 dev
 > node --watch src/server.js
 
+[db] Failed to connect to MongoDB Atlas: connect ECONNREFUSED 127.0.0.1:27017
+[db] The server will keep running so you can fix the connection (check MONGODB_URI, network, and Atlas IP allowlist), but database features will fail until it is connected.
+[api] Server running on http://localhost:5000
+[api] Server running on http://localhost:5000
+[api] Health check: http://localhost:5000/api/health
+[api] Health check: http://localhost:5000/api/health

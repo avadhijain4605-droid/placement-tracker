@@ -1,0 +1,36 @@
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import healthRouter from "./routes/health.js";
+
+dotenv.config();
+
+const app = express();
+
+app.use(
+  cors({
+    origin: process.env.CLIENT_ORIGIN || "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
+
+app.get("/", (req, res) => {
+  res.json({ message: "AI Placement Tracker API. Try GET /api/health" });
+});
+
+app.use("/api", healthRouter);
+
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found", path: req.originalUrl });
+});
+
+app.use((err, req, res, next) => {
+  console.error("[api] Unhandled error:", err);
+  res.status(500).json({ error: "Internal server error" });
+});
+
+export default app;

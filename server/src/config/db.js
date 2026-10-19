@@ -4,7 +4,7 @@ let isConnected = false;
 
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
-  console.log(uri)
+  //console.log(uri)
   if (!uri) {
     console.warn(
       "[db] MONGODB_URI is not set in server/.env. Server will start, but every database call will fail until it is configured."

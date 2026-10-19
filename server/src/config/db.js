@@ -12,15 +12,18 @@ export async function connectDB() {
     return null;
   }
 
+  // Print immediately so it's clear a connection attempt is happening.
+  console.log(`[db] Connecting to MongoDB...`);
+
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 5000,
       maxPoolSize: 10,
     });
 
     isConnected = true;
     console.log(
-      `[db] MongoDB Atlas connection established: ${conn.connection.host}/${conn.connection.name}`
+      `[db] MongoDB connection established: ${conn.connection.host}/${conn.connection.name}`
     );
 
     mongoose.connection.on("error", (err) => {
@@ -40,7 +43,7 @@ export async function connectDB() {
 
     return conn;
   } catch (err) {
-    console.error(`[db] Failed to connect to MongoDB Atlas: ${err.message}`);
+    console.error(`[db] Failed to connect to MongoDB: ${err.message}`);
     console.error(
       "[db] The server will keep running so you can fix the connection (check MONGODB_URI, network, and Atlas IP allowlist), but database features will fail until it is connected."
     );

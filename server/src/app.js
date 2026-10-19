@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import healthRouter from "./routes/health.js";
+import companiesRouter from "./routes/companies.js";
+import experiencesRouter from "./routes/experiences.js";
+import studentsRouter from "./routes/students.js";
 
 dotenv.config();
 
@@ -23,6 +26,9 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api", healthRouter);
+app.use("/api/companies", companiesRouter);
+app.use("/api/experiences", experiencesRouter);
+app.use("/api/students", studentsRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found", path: req.originalUrl });

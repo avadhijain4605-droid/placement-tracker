@@ -44,6 +44,7 @@ export const api = {
   login: (email, password) => request("/auth/login", { method: "POST", body: { email, password }, auth: false }),
   listCompanies: (active) => request(`/companies${active !== undefined ? `?active=${active}` : ""}`),
   getStudent: (id) => request(`/students/${id}`),
+  updateProfile: (data) => request("/students/me", { method: "PUT", body: data }),
   generatePlan: (companyId, availableDays) =>
     request("/ai/preparation-plan", { method: "POST", body: { companyId, availableDays } }),
 };

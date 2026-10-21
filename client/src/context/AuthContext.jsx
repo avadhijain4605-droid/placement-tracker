@@ -52,8 +52,17 @@ export function AuthProvider({ children }) {
     [persistSession]
   );
 
+  const refreshStudent = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const data = await api.getStudent(payload.sub);
+    setStudent(data.student);
+    return data.student;
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ student, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ student, loading, login, signup, logout, refreshStudent }}>
       {children}
     </AuthContext.Provider>
   );

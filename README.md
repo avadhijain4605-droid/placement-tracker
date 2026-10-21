@@ -25,7 +25,9 @@ No Firebase, Supabase, PostgreSQL, or other backend/database is used.
 ├── client/          # React + Vite + Tailwind frontend
 │   ├── src/
 │   │   ├── components/
+│   │   ├── context/      # AuthContext (JWT session)
 │   │   ├── pages/
+│   │   ├── api.js        # fetch wrapper for the Express API
 │   │   ├── App.jsx
 │   │   ├── main.jsx
 │   │   └── index.css
@@ -39,7 +41,9 @@ No Firebase, Supabase, PostgreSQL, or other backend/database is used.
 │   ├── src/
 │   │   ├── config/      # db connection
 │   │   ├── models/      # Student, Company, PlacementExperience
-│   │   ├── routes/      # health, companies, experiences, students
+│   │   ├── routes/      # health, auth, companies, experiences, students, ai
+│   │   ├── middleware/  # JWT auth guard
+│   │   ├── services/    # gemini (Google Gen AI SDK wrapper + validation)
 │   │   ├── app.js
 │   │   ├── server.js
 │   │   └── seed.js       # sample data seeder
@@ -149,10 +153,91 @@ The app runs on http://localhost:5173.
 - Safe seed script: `npm run seed` (idempotent — no duplicate records)
 - Read-only API routes: `GET /api/companies`, `GET /api/companies/:id`, `GET /api/experiences`, `GET /api/students`
 - If the database is down, the server still starts and DB routes return a safe `503` instead of crashing
-- Responsive placement dashboard with placeholder pages
+- Responsive placement dashboard
 - `.env.example` and `.gitignore`; no keys or credentials in source code
+- **Authentication**: email/password signup & login (`POST /api/auth/signup`, `POST /api/auth/login`) with JWT session tokens
+- **AI Preparation Plan**: `POST /api/ai/preparation-plan` — generates a personalized, structured prep plan using Google Gemini (backend-only; the API key never reaches the browser)
 
-Future steps will add authentication, AI preparation plans, and analytics.
+---
+
+## AI Preparation Plan feature
+
+### How it works
+
+1. A signed-in student selects a target company and enters how many days they have to prepare.
+2. The frontend sends `POST /api/ai/preparation-plan` with the company ID and available days (the auth token is sent automatically).
+3. The backend fetches the **student's real profile** (skills, CGPA, projects, certifications, coding profiles) and the **company's real requirements** (roles, eligibility, hiring process) from MongoDB.
+4. The backend builds a prompt from that real data and calls **Google Gemini** (`gemini-1.5-flash`) with a fixed server-side system instruction and a JSON response schema. The student cannot choose or override the system instruction.
+5. The AI's JSON response is **validated** against a strict schema (summary, durationDays, priorityTopics with reasons, dailyTasks with topics/practice, resources with reasons). If it fails validation, a `502` is returned — no partial or fake plan is sent to the frontend.
+6. The validated plan is returned to the frontend and rendered with daily tasks, priority topics, and resources.
+
+### Endpoint reference
+
+```
+POST /api/ai/preparation-plan
+Authorization: Bearer <jwt>
+Content-Type: application/json
+
+{
+  "companyId": "<mongodb ObjectId string>",
+  "availableDays": 7        // integer 1–60
+}
+```
+
+**Responses**
+
+| Status | Meaning |
+| ------ | ------- |
+| 200 | Plan generated and validated successfully. Body: `{ plan: { summary, durationDays, priorityTopics[], dailyTasks[], resources[] } }` |
+| 400 | Missing/invalid `companyId` or `availableDays`, or the student's profile is incomplete (missing skills or graduation year). |
+| 401 | No auth token or the token is invalid/expired. |
+| 404 | The student or company was not found in the database. |
+| 429 | Gemini rate limit reached — retry shortly. |
+| 502 | Gemini returned invalid/unparseable output. |
+| 503 | `GEMINI_API_KEY` is not configured on the server. |
+
+### Security notes
+
+- The `GEMINI_API_KEY` is read from server-side environment variables only — it is never exposed to the browser or sent in any API response.
+- The system instruction is hardcoded on the server; the client cannot supply or alter it.
+- The prompt is built entirely from database records (the student's real profile + the selected company's real data). No client-supplied free-text prompt is passed to Gemini.
+- The AI response is validated before it reaches the frontend; if validation fails the user sees an error, never a fabricated plan.
+
+### Setup for the AI feature
+
+1. Get a free Gemini API key at https://aistudio.google.com/app/apikey.
+2. Add it to `server/.env` (or the project-root `.env`):
+   ```
+   GEMINI_API_KEY=your_real_key_here
+   ```
+3. Set `JWT_SECRET` to a long random string in the same `.env` file:
+   ```
+   JWT_SECRET=replace-with-a-long-random-string
+   ```
+4. Restart the backend. The health check at `GET /api/health` will still report `ok` regardless of whether the Gemini key is set.
+5. Sign up at `/signup`, complete your profile (add at least your skills and graduation year), then visit **AI Prep Plan** to generate a plan.
+
+### Testing the endpoint
+
+With the backend running and a valid JWT token:
+
+```bash
+# Sign up and grab the token from the response
+TOKEN=$(curl -s -X POST http://localhost:5000/api/auth/signup \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Test","email":"test@example.com","password":"password123"}' \
+  | node -pe "JSON.parse(require('fs').readFileSync(0)).token")
+
+# (Add skills + graduationYear to the student record via your DB or a profile edit.)
+
+# Generate a plan
+curl -s -X POST http://localhost:5000/api/ai/preparation-plan \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"companyId":"<companyObjectId>","availableDays":7}'
+```
+
+Without a `GEMINI_API_KEY`, the same call returns `503` with `{"error":"Gemini API key is not configured on the server."}` — confirming the error path works without a real key.
 
 ---
 

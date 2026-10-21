@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
@@ -8,6 +9,8 @@ const navItems = [
 ];
 
 export default function Layout() {
+  const { student, logout } = useAuth();
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-200">
@@ -38,12 +41,30 @@ export default function Layout() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <Link to="/login" className="btn-secondary">
-              Log in
-            </Link>
-            <Link to="/signup" className="btn-primary">
-              Sign up
-            </Link>
+            {student ? (
+              <>
+                <span className="text-sm text-slate-600 hidden sm:inline">{student.name}</span>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    logout();
+                    navigate("/login");
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="btn-secondary">
+                  Log in
+                </Link>
+                <Link to="/signup" className="btn-primary">
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
         </div>
 

@@ -5,6 +5,7 @@ import Company from "./models/Company.js";
 import PlacementExperience from "./models/PlacementExperience.js";
 
 dotenv.config();
+dotenv.config({ path: "../.env" });
 
 const companies = [
   {

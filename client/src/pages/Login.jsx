@@ -1,26 +1,53 @@
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate, Navigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Login() {
+  const { login, student } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (student) return <Navigate to="/dashboard" replace />;
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await login(email.trim(), password);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message || "Login failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-md">
       <PageHeader title="Log in" subtitle="Welcome back. Sign in to continue." />
-      <form className="card p-6 space-y-4" onSubmit={(e) => e.preventDefault()}>
+      <form className="card p-6 space-y-4" onSubmit={handleSubmit}>
         <div>
           <label className="label" htmlFor="email">Email</label>
-          <input id="email" type="email" className="input" placeholder="you@college.edu" />
+          <input id="email" type="email" className="input" placeholder="you@college.edu" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
         </div>
         <div>
           <label className="label" htmlFor="password">Password</label>
-          <input id="password" type="password" className="input" placeholder="••••••••" />
+          <input id="password" type="password" className="input" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
         </div>
-        <button type="submit" className="btn-primary w-full">Log in</button>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button type="submit" className="btn-primary w-full" disabled={busy}>
+          {busy ? "Signing in…" : "Log in"}
+        </button>
         <p className="text-sm text-slate-500 text-center">
           New here?{" "}
           <Link to="/signup" className="text-brand-600 font-medium">Create an account</Link>
         </p>
       </form>
-      <p className="mt-4 text-xs text-slate-400 text-center">Authentication will be wired up in a later step.</p>
     </div>
   );
 }

@@ -47,8 +47,8 @@ export default function Layout() {
                 <button
                   type="button"
                   className="btn-secondary"
-                  onClick={() => {
-                    logout();
+                  onClick={async () => {
+                    await logout();
                     navigate("/login");
                   }}
                 >

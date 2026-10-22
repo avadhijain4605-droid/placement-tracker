@@ -17,7 +17,10 @@ const ALLOWED_FIELDS = [
   "codingProfiles",
 ];
 
-router.put("/me", requireAuth, async (req, res, next) => {
+// All student routes require authentication.
+router.use(requireAuth);
+
+router.put("/me", async (req, res, next) => {
   try {
     const update = {};
     for (const f of ALLOWED_FIELDS) {
@@ -52,6 +55,16 @@ router.put("/me", requireAuth, async (req, res, next) => {
       { new: true, runValidators: true }
     ).select({ passwordHash: 0 });
 
+    if (!student) return res.status(404).json({ error: "Student not found." });
+    res.json({ student });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/me", async (req, res, next) => {
+  try {
+    const student = await Student.findById(req.studentId, { passwordHash: 0 }).lean();
     if (!student) return res.status(404).json({ error: "Student not found." });
     res.json({ student });
   } catch (err) {

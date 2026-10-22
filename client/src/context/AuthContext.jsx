@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api, setToken, getToken } from "../api.js";
+import { api } from "../api.js";
 
 const AuthContext = createContext(null);
 
@@ -7,56 +7,42 @@ export function AuthProvider({ children }) {
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setStudent(null);
-  }, []);
-
+  // On mount, ask the server who the current session belongs to.
+  // The session cookie is HttpOnly so the browser JS cannot read it;
+  // the server validates it and returns the student profile (or 401).
   useEffect(() => {
-    const token = getToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    const payload = JSON.parse(atob(token.split(".")[1]));
     api
-      .getStudent(payload.sub)
+      .me()
       .then((data) => setStudent(data.student))
       .catch(() => {
-        setToken(null);
         setStudent(null);
       })
       .finally(() => setLoading(false));
   }, []);
 
-  const persistSession = useCallback((data) => {
-    setToken(data.token);
+  const signup = useCallback(async (name, email, password) => {
+    const data = await api.signup(name, email, password);
     setStudent(data.student);
+    return data.student;
   }, []);
 
-  const signup = useCallback(
-    async (name, email, password) => {
-      const data = await api.signup(name, email, password);
-      persistSession(data);
-      return data.student;
-    },
-    [persistSession]
-  );
+  const login = useCallback(async (email, password) => {
+    const data = await api.login(email, password);
+    setStudent(data.student);
+    return data.student;
+  }, []);
 
-  const login = useCallback(
-    async (email, password) => {
-      const data = await api.login(email, password);
-      persistSession(data);
-      return data.student;
-    },
-    [persistSession]
-  );
+  const logout = useCallback(async () => {
+    try {
+      await api.logout();
+    } catch {
+      // Even if the network call fails, clear local state.
+    }
+    setStudent(null);
+  }, []);
 
   const refreshStudent = useCallback(async () => {
-    const token = getToken();
-    if (!token) return;
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const data = await api.getStudent(payload.sub);
+    const data = await api.me();
     setStudent(data.student);
     return data.student;
   }, []);

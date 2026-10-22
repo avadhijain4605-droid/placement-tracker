@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import healthRouter from "./routes/health.js";
 import companiesRouter from "./routes/companies.js";
@@ -15,16 +16,22 @@ dotenv.config({ path: "../.env" });
 
 const app = express();
 
+// CORS must use a concrete origin (not "*") when credentials are included so
+// the browser sends the HttpOnly session cookie. The default covers local dev.
+const allowedOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || "*",
+    origin: allowedOrigin,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 app.get("/", (req, res) => {
   res.json({ message: "AI Placement Tracker API. Try GET /api/health" });

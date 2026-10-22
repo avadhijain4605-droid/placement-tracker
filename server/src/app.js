@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import path from "path";
 import healthRouter from "./routes/health.js";
 import companiesRouter from "./routes/companies.js";
 import experiencesRouter from "./routes/experiences.js";
@@ -9,10 +11,16 @@ import studentsRouter from "./routes/students.js";
 import authRouter from "./routes/auth.js";
 import aiRouter from "./routes/ai.js";
 
-// Load server/.env first; fall back to the project-root .env (which persists
-// across environment resets) so MONGODB_URI and other secrets stay available.
-dotenv.config();
+// Resolve the server directory regardless of the process working directory,
+// so .env is always found whether running locally or in the Bolt host.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load server/.env explicitly, then fall back to the project-root .env
+// (which persists across environment resets) so secrets stay available.
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 dotenv.config({ path: "../.env" });
+dotenv.config();
 
 const app = express();
 

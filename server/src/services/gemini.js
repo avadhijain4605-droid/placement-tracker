@@ -4,8 +4,10 @@ const MODEL_NAME = "gemini-flash-lite-latest";
 
 function getClient() {
   const key = process.env.GEMINI_API_KEY;
-  if (!key || key === "your_gemini_api_key_here") {
-    const err = new Error("Gemini API key is not configured on the server.");
+  if (!key || key === "your_gemini_api_key_here" || key === "YOUR_GEMINI_API_KEY") {
+    const err = new Error(
+      "Gemini API key is not configured. Set GEMINI_API_KEY in server/.env"
+    );
     err.code = "GEMINI_NOT_CONFIGURED";
     throw err;
   }

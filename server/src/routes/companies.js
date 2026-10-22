@@ -93,7 +93,7 @@ router.post("/enrich", requireAuth, async (req, res, next) => {
       if (err.code === "GEMINI_INVALID_OUTPUT") {
         return res.status(502).json({ error: "The AI returned an invalid profile. Please try again." });
       }
-      throw err;
+      return res.status(502).json({ error: err.message || "Gemini call failed. Please try again." });
     }
 
     res.json({ profile });

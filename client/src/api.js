@@ -27,6 +27,16 @@ async function request(path, { method = "GET", body } = {}) {
   return data;
 }
 
+function buildQuery(params) {
+  const parts = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+    }
+  }
+  return parts.length ? `?${parts.join("&")}` : "";
+}
+
 export const api = {
   signup: (name, email, password) =>
     request("/auth/signup", { method: "POST", body: { name, email, password } }),
@@ -34,8 +44,18 @@ export const api = {
     request("/auth/login", { method: "POST", body: { email, password } }),
   logout: () => request("/auth/logout", { method: "POST" }),
   me: () => request("/auth/me"),
-  listCompanies: (active) =>
-    request(`/companies${active !== undefined ? `?active=${active}` : ""}`),
+
+  listCompanies: (params = {}) =>
+    request(`/companies${buildQuery(params)}`),
+  getCompany: (id) => request(`/companies/${id}`),
+  listIndustries: () => request("/companies/industries"),
+
+  listExperiences: (params = {}) =>
+    request(`/experiences${buildQuery(params)}`),
+  getExperience: (id) => request(`/experiences/${id}`),
+  submitExperience: (data) =>
+    request("/experiences", { method: "POST", body: data }),
+
   getStudent: (id) => request(`/students/${id}`),
   updateProfile: (data) => request("/students/me", { method: "PUT", body: data }),
   generatePlan: (companyId, availableDays) =>

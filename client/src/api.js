@@ -49,6 +49,10 @@ export const api = {
     request(`/companies${buildQuery(params)}`),
   getCompany: (id) => request(`/companies/${id}`),
   listIndustries: () => request("/companies/industries"),
+  enrichCompany: (companyName) =>
+    request("/companies/enrich", { method: "POST", body: { companyName } }),
+  createCompany: (data) =>
+    request("/companies", { method: "POST", body: data }),
 
   listExperiences: (params = {}) =>
     request(`/experiences${buildQuery(params)}`),

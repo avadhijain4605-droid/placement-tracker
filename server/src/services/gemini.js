@@ -132,6 +132,150 @@ export function validatePlan(plan) {
   return null;
 }
 
+// ── Company Intelligence Enrichment ───────────────────────────────
+
+const COMPANY_SCHEMA = {
+  type: "object",
+  properties: {
+    name: { type: "string" },
+    industry: { type: "string" },
+    headquarters: { type: "string" },
+    description: { type: "string", description: "2-3 sentence company overview" },
+    website: { type: "string" },
+    roles: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          package: { type: "string", description: "e.g. 8.5 LPA" },
+          location: { type: "string" },
+          eligibility: { type: "string" },
+        },
+      },
+    },
+    eligibilityCriteria: {
+      type: "object",
+      properties: {
+        minCgpa: { type: "number" },
+        allowedBranches: { type: "array", items: { type: "string" } },
+        backlogAllowed: { type: "boolean" },
+      },
+    },
+    requiredSkills: { type: "array", items: { type: "string" } },
+    hiringProcess: { type: "array", items: { type: "string" } },
+    oaPatterns: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          round: { type: "string" },
+          type: { type: "string" },
+          duration: { type: "string" },
+          difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
+          description: { type: "string" },
+          topics: { type: "array", items: { type: "string" } },
+        },
+      },
+    },
+    interviewQuestions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          question: { type: "string" },
+          type: { type: "string", enum: ["technical", "behavioral", "coding", "hr", "other"] },
+          difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
+          round: { type: "string" },
+        },
+      },
+    },
+    preparationResources: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          type: { type: "string", enum: ["article", "video", "course", "book", "practice", "other"] },
+          url: { type: "string" },
+          topic: { type: "string" },
+          description: { type: "string" },
+        },
+      },
+    },
+  },
+  required: ["name", "industry", "description", "requiredSkills", "hiringProcess"],
+};
+
+const COMPANY_SYSTEM = `You are an expert campus placement researcher for Indian engineering students.
+Given a company name, generate a realistic, detailed intelligence profile that would help a student prepare for placements at that company.
+Include realistic but fictional data — do NOT copy real proprietary interview questions verbatim. Generate plausible questions based on common topics.
+Return ONLY valid JSON matching the schema. No markdown fences or commentary.`;
+
+export async function generateCompanyIntelligence(companyName) {
+  const genAI = getClient();
+  const model = genAI.getGenerativeModel({
+    model: MODEL_NAME,
+    systemInstruction: COMPANY_SYSTEM,
+    generationConfig: {
+      temperature: 0.6,
+      responseMimeType: "application/json",
+      responseSchema: COMPANY_SCHEMA,
+    },
+  });
+
+  const prompt = `Generate a comprehensive placement intelligence profile for "${companyName}".
+Include:
+- Industry and headquarters
+- A 2-3 sentence description
+- 1-2 realistic entry-level roles with package (in LPA), location, and eligibility text
+- Eligibility criteria (minCgpa, allowedBranches, backlogAllowed)
+- 5-8 required skills
+- A step-by-step hiring process (4-5 rounds)
+- 1-2 OA pattern descriptions with difficulty, duration, topics
+- 4-6 interview questions across different rounds and types
+- 3-5 preparation resources (use example.com URLs, realistic titles)`;
+
+  let text;
+  try {
+    const result = await model.generateContent(prompt);
+    text = result.response.text();
+  } catch (err) {
+    if (err instanceof GoogleGenerativeAIRequestInputError) {
+      const e = new Error("Gemini rejected the request input.");
+      e.code = "GEMINI_BAD_INPUT";
+      throw e;
+    }
+    const status = err?.status || err?.code;
+    if (status === 429) {
+      const e = new Error("Gemini rate limit reached. Please retry shortly.");
+      e.code = "GEMINI_RATE_LIMIT";
+      throw e;
+    }
+    const e = new Error("Gemini call failed.");
+    e.code = "GEMINI_ERROR";
+    e.cause = err.message;
+    throw e;
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    const e = new Error("Gemini returned non-JSON output.");
+    e.code = "GEMINI_INVALID_OUTPUT";
+    throw e;
+  }
+
+  if (!parsed || typeof parsed.name !== "string" || !parsed.name.trim()) {
+    const e = new Error("Gemini output invalid: missing company name.");
+    e.code = "GEMINI_INVALID_OUTPUT";
+    throw e;
+  }
+
+  return parsed;
+}
+
 export async function generatePreparationPlan(student, company, availableDays) {
   const genAI = getClient();
   const model = genAI.getGenerativeModel({

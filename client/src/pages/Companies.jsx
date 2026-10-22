@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import PageHeader from "../components/PageHeader.jsx";
 import { api } from "../api.js";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Companies() {
+  const { student } = useAuth();
   const [companies, setCompanies] = useState([]);
   const [industries, setIndustries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,6 +16,15 @@ export default function Companies() {
   const [industry, setIndustry] = useState("");
   const [activeFilter, setActiveFilter] = useState("");
   const [sortBy, setSortBy] = useState("name");
+
+  // AI Enrichment state
+  const [enrichOpen, setEnrichOpen] = useState(false);
+  const [enrichName, setEnrichName] = useState("");
+  const [enriching, setEnriching] = useState(false);
+  const [enrichError, setEnrichError] = useState(null);
+  const [enrichedProfile, setEnrichedProfile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(null);
 
   // Debounce search input by 300ms.
   useEffect(() => {
@@ -48,12 +59,107 @@ export default function Companies() {
     loadCompanies();
   }, [loadCompanies]);
 
+  async function handleEnrich(e) {
+    e.preventDefault();
+    if (!enrichName.trim()) return;
+    setEnriching(true);
+    setEnrichError(null);
+    setEnrichedProfile(null);
+    setSaveSuccess(null);
+    try {
+      const data = await api.enrichCompany(enrichName.trim());
+      setEnrichedProfile(data.profile);
+    } catch (err) {
+      setEnrichError(err.message || "Failed to generate company profile.");
+    } finally {
+      setEnriching(false);
+    }
+  }
+
+  async function handleSaveProfile() {
+    if (!enrichedProfile) return;
+    setSaving(true);
+    setEnrichError(null);
+    setSaveSuccess(null);
+    try {
+      const data = await api.createCompany(enrichedProfile);
+      setSaveSuccess(data.company.name);
+      setEnrichedProfile(null);
+      setEnrichName("");
+      setEnrichOpen(false);
+      await loadCompanies();
+    } catch (err) {
+      setEnrichError(err.message || "Failed to save company.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Companies"
         subtitle="Browse hiring companies, roles, and placement insights."
+        actions={
+          student && (
+            <button
+              onClick={() => { setEnrichOpen(!enrichOpen); setEnrichedProfile(null); setEnrichError(null); setSaveSuccess(null); }}
+              className="btn-primary"
+            >
+              {enrichOpen ? "Close" : "AI Enrich Company"}
+            </button>
+          )
+        }
       />
+
+      {/* AI Enrichment Panel */}
+      {enrichOpen && student && (
+        <div className="card p-6 mb-6">
+          <h3 className="text-lg font-semibold text-slate-900 mb-2">AI Company Intelligence</h3>
+          <p className="text-sm text-slate-500 mb-4">
+            Type a company name and Gemini will generate a full intelligence profile — industry, roles, eligibility, required skills, OA patterns, interview questions, and prep resources. Review it, then save to the database.
+          </p>
+
+          {saveSuccess && (
+            <div className="rounded-lg bg-green-50 border border-green-200 p-3 mb-4">
+              <p className="text-sm text-green-700 font-medium">"{saveSuccess}" has been saved to the database.</p>
+            </div>
+          )}
+
+          <form onSubmit={handleEnrich} className="flex gap-3 mb-4">
+            <input
+              className="input flex-1"
+              placeholder="Enter company name (e.g. Stripe, Zomato, Tesla...)"
+              value={enrichName}
+              onChange={(e) => setEnrichName(e.target.value)}
+              disabled={enriching}
+            />
+            <button type="submit" className="btn-primary" disabled={enriching || !enrichName.trim()}>
+              {enriching ? "Generating..." : "Generate Profile"}
+            </button>
+          </form>
+
+          {enriching && (
+            <div className="flex items-center gap-3 py-8">
+              <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
+              <p className="text-sm text-slate-500">Gemini is researching the company and building an intelligence profile...</p>
+            </div>
+          )}
+
+          {enrichError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 mb-4">
+              <p className="text-sm text-red-700 font-medium">{enrichError}</p>
+              {/authentication required/i.test(enrichError) && (
+                <Link to="/login" className="mt-1 inline-block text-sm text-red-600 underline">Log in to use this feature</Link>
+              )}
+            </div>
+          )}
+
+          {enrichedProfile && (
+            <EnrichedProfilePreview profile={enrichedProfile} onSave={handleSaveProfile} saving={saving} />
+          )}
+        </div>
+      )}
 
       {/* Search & Filters */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -189,6 +295,94 @@ export default function Companies() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function EnrichedProfilePreview({ profile, onSave, saving }) {
+  return (
+    <div className="border-t border-slate-200 pt-4 mt-4">
+      <h4 className="font-semibold text-slate-900 mb-1">{profile.name}</h4>
+      <p className="text-sm text-slate-600 mb-1">{profile.industry} • {profile.headquarters || "—"}</p>
+      <p className="text-sm text-slate-600 mb-4">{profile.description}</p>
+
+      {profile.requiredSkills && profile.requiredSkills.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-medium text-slate-500 uppercase mb-1">Required Skills</p>
+          <div className="flex flex-wrap gap-1.5">
+            {profile.requiredSkills.map((s) => (
+              <span key={s} className="text-xs px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full">{s}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {profile.hiringProcess && profile.hiringProcess.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-medium text-slate-500 uppercase mb-1">Hiring Process</p>
+          <p className="text-sm text-slate-700">{profile.hiringProcess.join(" → ")}</p>
+        </div>
+      )}
+
+      {profile.roles && profile.roles.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-medium text-slate-500 uppercase mb-1">Roles</p>
+          <div className="space-y-1">
+            {profile.roles.map((r, i) => (
+              <p key={i} className="text-sm text-slate-700">
+                {r.title} • {r.package || "—"} • {r.location || "—"}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {profile.oaPatterns && profile.oaPatterns.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-medium text-slate-500 uppercase mb-1">OA Patterns</p>
+          <div className="space-y-1">
+            {profile.oaPatterns.map((oa, i) => (
+              <p key={i} className="text-sm text-slate-700">
+                {oa.round} ({oa.difficulty}, {oa.duration || "—"}) — {oa.description || ""}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {profile.interviewQuestions && profile.interviewQuestions.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs font-medium text-slate-500 uppercase mb-1">Interview Questions ({profile.interviewQuestions.length})</p>
+          <ul className="text-sm text-slate-700 space-y-1 list-disc list-inside">
+            {profile.interviewQuestions.slice(0, 4).map((q, i) => (
+              <li key={i}>{q.question} <span className="text-xs text-slate-400">({q.type}, {q.difficulty})</span></li>
+            ))}
+            {profile.interviewQuestions.length > 4 && (
+              <li className="text-xs text-slate-400">+{profile.interviewQuestions.length - 4} more...</li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {profile.preparationResources && profile.preparationResources.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-slate-500 uppercase mb-1">Preparation Resources</p>
+          <ul className="text-sm text-slate-700 space-y-1 list-disc list-inside">
+            {profile.preparationResources.map((r, i) => (
+              <li key={i}>{r.title} <span className="text-xs text-slate-400">({r.type})</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button onClick={onSave} disabled={saving} className="btn-primary">
+          {saving ? "Saving..." : "Save to Database"}
+        </button>
+        <span className="text-xs text-slate-400 self-center">
+          Review the profile above before saving. You can edit it later.
+        </span>
+      </div>
     </div>
   );
 }

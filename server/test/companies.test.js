@@ -1,15 +1,27 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import request from "supertest";
 import app from "../src/app.js";
-import { setupTestDb, teardownTestDb, clearDb } from "./testDb.js";
+import { setupTestDb, teardownTestDb, clearDb, createTestStudent } from "./testDb.js";
 import Company from "../src/models/Company.js";
 
 async function createCompany(data) {
   return Company.create(data);
 }
 
+async function loginUser(email, password) {
+  const res = await request(app).post("/api/auth/login").send({ email, password });
+  return res.headers["set-cookie"][0].split(";")[0];
+}
+
 describe("Companies API", () => {
-  beforeAll(async () => { await setupTestDb(); });
+  let cookie;
+
+  beforeAll(async () => {
+    await setupTestDb();
+    await createTestStudent({ email: "companyuser@college.edu", password: "Password1" });
+    cookie = await loginUser("companyuser@college.edu", "Password1");
+  });
+
   afterAll(async () => { await teardownTestDb(); });
 
   beforeEach(async () => {
@@ -136,6 +148,75 @@ describe("Companies API", () => {
     it("returns 404 for a non-existent company", async () => {
       const res = await request(app).get("/api/companies/507f1f77bcf86cd799439011").expect(404);
       expect(res.body.error).toMatch(/not found/i);
+    });
+  });
+
+  describe("POST /api/companies", () => {
+    it("creates a new company when authenticated", async () => {
+      const res = await request(app)
+        .post("/api/companies").set("Cookie", cookie)
+        .send({
+          name: "NewCo AI",
+          industry: "AI",
+          headquarters: "Delhi, India",
+          description: "A new AI startup.",
+          requiredSkills: ["Python", "PyTorch"],
+          hiringProcess: ["Coding Round", "Interview"],
+          active: true,
+        })
+        .expect(201);
+      expect(res.body.company.name).toBe("NewCo AI");
+      expect(res.body.company.requiredSkills).toEqual(["Python", "PyTorch"]);
+    });
+
+    it("rejects creation without authentication", async () => {
+      const res = await request(app)
+        .post("/api/companies").send({ name: "Unauthorized Co" })
+        .expect(401);
+      expect(res.body.error).toMatch(/authentication required/i);
+    });
+
+    it("rejects creation with a missing name", async () => {
+      const res = await request(app)
+        .post("/api/companies").set("Cookie", cookie)
+        .send({ industry: "Tech" })
+        .expect(400);
+      expect(res.body.error).toMatch(/name is required/i);
+    });
+
+    it("rejects creation of a duplicate company name", async () => {
+      const res = await request(app)
+        .post("/api/companies").set("Cookie", cookie)
+        .send({ name: "NovaTech Solutions", industry: "IT" })
+        .expect(409);
+      expect(res.body.error).toMatch(/already exists/i);
+    });
+  });
+
+  describe("POST /api/companies/enrich", () => {
+    it("rejects enrichment without authentication", async () => {
+      const res = await request(app)
+        .post("/api/companies/enrich").send({ companyName: "Tesla" })
+        .expect(401);
+      expect(res.body.error).toMatch(/authentication required/i);
+    });
+
+    it("rejects enrichment without a company name", async () => {
+      const res = await request(app)
+        .post("/api/companies/enrich").set("Cookie", cookie)
+        .send({ companyName: "" })
+        .expect(400);
+      expect(res.body.error).toMatch(/companyName is required/i);
+    });
+
+    it("returns 409 if the company name already exists in DB", async () => {
+      const res = await request(app)
+        .post("/api/companies/enrich").set("Cookie", cookie)
+        .send({ companyName: "NovaTech Solutions" })
+        .expect(409);
+      expect(res.body.error).toMatch(/already exists/i);
+      expect(res.body.company).toBeDefined();
+      expect(res.body.company.name).toBe("NovaTech Solutions");
     });
   });
 });

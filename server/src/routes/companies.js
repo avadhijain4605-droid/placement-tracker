@@ -1,6 +1,8 @@
 import { Router } from "express";
 import Company from "../models/Company.js";
 import { requireDb } from "../config/db.js";
+import { requireAuth } from "../middleware/auth.js";
+import { generateCompanyIntelligence } from "../services/gemini.js";
 
 const router = Router();
 
@@ -60,6 +62,67 @@ router.get("/industries", async (req, res, next) => {
     const industries = await Company.distinct("industry");
     res.json({ industries });
   } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/companies/enrich — AI-generate a company intelligence profile (auth required).
+// Does NOT save to DB — returns the generated profile for user preview.
+router.post("/enrich", requireAuth, async (req, res, next) => {
+  try {
+    const { companyName } = req.body || {};
+    if (!companyName || typeof companyName !== "string" || !companyName.trim()) {
+      return res.status(400).json({ error: "companyName is required." });
+    }
+
+    // Check if a company with this name already exists.
+    const existing = await Company.findOne({
+      name: { $regex: `^${companyName.trim()}$`, $options: "i" },
+    }).lean();
+    if (existing) {
+      return res.status(409).json({ error: "A company with this name already exists.", company: existing });
+    }
+
+    let profile;
+    try {
+      profile = await generateCompanyIntelligence(companyName.trim());
+    } catch (err) {
+      if (err.code === "GEMINI_NOT_CONFIGURED") return res.status(503).json({ error: err.message });
+      if (err.code === "GEMINI_RATE_LIMIT") return res.status(429).json({ error: err.message });
+      if (err.code === "GEMINI_BAD_INPUT") return res.status(502).json({ error: err.message });
+      if (err.code === "GEMINI_INVALID_OUTPUT") {
+        return res.status(502).json({ error: "The AI returned an invalid profile. Please try again." });
+      }
+      throw err;
+    }
+
+    res.json({ profile });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/companies — save a new company to the database (auth required).
+router.post("/", requireAuth, async (req, res, next) => {
+  try {
+    const data = req.body || {};
+    if (!data.name || typeof data.name !== "string" || !data.name.trim()) {
+      return res.status(400).json({ error: "Company name is required." });
+    }
+
+    const existing = await Company.findOne({
+      name: { $regex: `^${data.name.trim()}$`, $options: "i" },
+    }).lean();
+    if (existing) {
+      return res.status(409).json({ error: "A company with this name already exists." });
+    }
+
+    const created = await Company.create(data);
+    res.status(201).json({ company: created.toObject() });
+  } catch (err) {
+    if (err.name === "ValidationError") {
+      return res.status(400).json({ error: err.message });
+    }
     next(err);
   }
 });

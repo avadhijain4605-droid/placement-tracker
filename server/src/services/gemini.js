@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI, GoogleGenerativeAIRequestInputError } from "@google/generative-ai";
 
-const MODEL_NAME = "gemini-1.5-flash";
+const MODEL_NAME = "gemini-flash-lite-latest";
 
 function getClient() {
   const key = process.env.GEMINI_API_KEY;

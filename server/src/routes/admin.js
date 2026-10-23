@@ -5,6 +5,8 @@ import Company from "../models/Company.js";
 import Announcement from "../models/Announcement.js";
 import Notification from "../models/Notification.js";
 import Student from "../models/Student.js";
+import PlacementExperience from "../models/PlacementExperience.js";
+import PrepProgress from "../models/PrepProgress.js";
 import { requireDb } from "../config/db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import AuditLog from "../models/AuditLog.js";
@@ -24,8 +26,15 @@ router.get("/dashboard", requireRole("admin", "super_admin"), async (req, res, n
       totalEligibleAgg,
       applicationsAgg,
       selectedAgg,
+      totalExperiences,
+      pendingExperiences,
+      approvedExperiences,
+      totalStudentsAgg,
+      prepPlansAgg,
       recentDrives,
       recentAnnouncements,
+      recentStudents,
+      recentExperiences,
     ] = await Promise.all([
       Company.countDocuments({ archived: { $ne: true } }),
       PlacementDrive.countDocuments({ status: "published" }),
@@ -44,6 +53,16 @@ router.get("/dashboard", requireRole("admin", "super_admin"), async (req, res, n
         { $match: { status: "selected" } },
         { $group: { _id: null, total: { $sum: 1 } } },
       ]),
+      PlacementExperience.countDocuments({}),
+      PlacementExperience.countDocuments({ moderationStatus: "pending" }),
+      PlacementExperience.countDocuments({ moderationStatus: "approved" }),
+      Student.aggregate([
+        { $match: { archived: { $ne: true } } },
+        { $count: "total" },
+      ]),
+      PrepProgress.aggregate([
+        { $group: { _id: null, total: { $sum: 1 } } },
+      ]),
       PlacementDrive.find({})
         .populate("company", "name industry logoUrl")
         .sort({ createdAt: -1 })
@@ -53,19 +72,26 @@ router.get("/dashboard", requireRole("admin", "super_admin"), async (req, res, n
         .sort({ publishedAt: -1 })
         .limit(5)
         .lean(),
+      Student.find({ archived: { $ne: true } })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select({ passwordHash: 0 })
+        .lean(),
+      PlacementExperience.find({})
+        .populate("company", "name industry")
+        .sort({ postedAt: -1 })
+        .limit(5)
+        .lean(),
     ]);
 
-    // Drive status breakdown for chart
     const statusBreakdown = await PlacementDrive.aggregate([
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
-    // Application status breakdown for chart
     const appStatusBreakdown = await PlacementApplication.aggregate([
       { $group: { _id: "$status", count: { $sum: 1 } } },
     ]);
 
-    // Companies per industry for chart
     const industryBreakdown = await Company.aggregate([
       { $match: { archived: { $ne: true } } },
       { $group: { _id: "$industry", count: { $sum: 1 } } },
@@ -81,6 +107,11 @@ router.get("/dashboard", requireRole("admin", "super_admin"), async (req, res, n
         totalStudents: totalEligibleAgg[0]?.total || 0,
         totalApplications: applicationsAgg[0]?.total || 0,
         totalSelected: selectedAgg[0]?.total || 0,
+        totalExperiences,
+        pendingExperiences,
+        approvedExperiences,
+        totalAllUsers: totalStudentsAgg[0]?.total || 0,
+        totalPrepPlans: prepPlansAgg[0]?.total || 0,
       },
       charts: {
         driveStatus: statusBreakdown.map((s) => ({ status: s._id, count: s.count })),
@@ -89,7 +120,250 @@ router.get("/dashboard", requireRole("admin", "super_admin"), async (req, res, n
       },
       recentDrives,
       recentAnnouncements,
+      recentStudents: recentStudents.map((s) => ({
+        _id: s._id,
+        name: s.name,
+        email: s.email,
+        role: s.role,
+        createdAt: s.createdAt,
+      })),
+      recentExperiences: recentExperiences.map((e) => ({
+        _id: e._id,
+        studentName: e.studentName,
+        role: e.role,
+        company: e.company,
+        outcome: e.outcome,
+        moderationStatus: e.moderationStatus,
+        postedAt: e.postedAt,
+      })),
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/students — list all students with search, filter, pagination
+//   ?q=<text>        search name or email
+//   ?graduationYear=<n>
+//   ?branch=<text>
+//   ?page=<n>        default 1
+//   ?limit=<n>       default 20, max 100
+router.get("/students", requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const filter = { archived: { $ne: true } };
+
+    if (req.query.q) {
+      const q = String(req.query.q).trim();
+      if (q) {
+        const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+        filter.$or = [{ name: rx }, { email: rx }];
+      }
+    }
+    if (req.query.graduationYear) {
+      const y = parseInt(req.query.graduationYear);
+      if (Number.isFinite(y)) filter.graduationYear = y;
+    }
+    if (req.query.branch) {
+      filter.branch = String(req.query.branch).trim();
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [students, total] = await Promise.all([
+      Student.find(filter, { passwordHash: 0 })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Student.countDocuments(filter),
+    ]);
+
+    res.json({ count: students.length, total, page, pages: Math.ceil(total / limit), students });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/students/:id — student detail (admin)
+router.get("/students/:id", requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const s = await Student.findById(req.params.id, { passwordHash: 0 }).lean();
+    if (!s) return res.status(404).json({ error: "Student not found." });
+    res.json({ student: s });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/students/:id/suspend — archive (suspend) a student (admin)
+router.put("/students/:id/suspend", requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const s = await Student.findByIdAndUpdate(
+      req.params.id,
+      { $set: { archived: true } },
+      { new: true }
+    ).select({ passwordHash: 0 });
+    if (!s) return res.status(404).json({ error: "Student not found." });
+
+    await logAction({
+      actor: req.studentId,
+      actorName: req.studentName || "",
+      actorRole: req.studentRole,
+      action: "suspend_student",
+      resource: "Student",
+      resourceId: s._id,
+      details: `Suspended ${s.email}`,
+    });
+
+    res.json({ student: s });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/students/:id/reactivate — unarchive (reactivate) a student (admin)
+router.put("/students/:id/reactivate", requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const s = await Student.findByIdAndUpdate(
+      req.params.id,
+      { $set: { archived: false } },
+      { new: true }
+    ).select({ passwordHash: 0 });
+    if (!s) return res.status(404).json({ error: "Student not found." });
+
+    await logAction({
+      actor: req.studentId,
+      actorName: req.studentName || "",
+      actorRole: req.studentRole,
+      action: "reactivate_student",
+      resource: "Student",
+      resourceId: s._id,
+      details: `Reactivated ${s.email}`,
+    });
+
+    res.json({ student: s });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/analytics — AI & career intelligence overview
+router.get("/analytics", requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const [
+      totalPrepPlans,
+      prepPlansAgg,
+      popularCompanies,
+      topMissingSkills,
+      topMatchedSkills,
+      avgReadiness,
+      eligibilityStats,
+    ] = await Promise.all([
+      PrepProgress.countDocuments({}),
+      PrepProgress.aggregate([
+        { $group: { _id: null, total: { $sum: 1 } } },
+      ]),
+      PrepProgress.aggregate([
+        { $group: { _id: "$companyId", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+        {
+          $lookup: {
+            from: "companies",
+            localField: "_id",
+            foreignField: "_id",
+            as: "company",
+            pipeline: [{ $project: { name: 1, industry: 1 } }],
+          },
+        },
+        { $unwind: { path: "$company", preserveNullAndEmptyArrays: true } },
+        { $project: { _id: 1, count: 1, name: "$company.name", industry: "$company.industry" } },
+      ]),
+      PrepProgress.aggregate([
+        { $unwind: "$missing" },
+        { $group: { _id: "$missing", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 15 },
+        { $project: { _id: 0, skill: "$_id", count: 1 } },
+      ]),
+      PrepProgress.aggregate([
+        { $unwind: "$matched" },
+        { $group: { _id: "$matched", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 15 },
+        { $project: { _id: 0, skill: "$_id", count: 1 } },
+      ]),
+      PrepProgress.aggregate([
+        { $match: { readiness: { $ne: null } } },
+        { $group: { _id: null, avg: { $avg: "$readiness" }, min: { $min: "$readiness" }, max: { $max: "$readiness" } } },
+      ]),
+      PrepProgress.aggregate([
+        { $group: { _id: null, passed: { $sum: { $cond: ["$eligibilityPassed", 1, 0] } }, total: { $sum: 1 } } },
+      ]),
+    ]);
+
+    res.json({
+      stats: {
+        totalPrepPlans,
+        avgReadiness: avgReadiness[0] ? Math.round(avgReadiness[0].avg) : null,
+        minReadiness: avgReadiness[0]?.min ?? null,
+        maxReadiness: avgReadiness[0]?.max ?? null,
+        eligibilityPassed: eligibilityStats[0]?.passed || 0,
+        eligibilityTotal: eligibilityStats[0]?.total || 0,
+      },
+      popularCompanies: popularCompanies.map((p) => ({
+        companyId: p._id,
+        name: p.name || "Unknown",
+        industry: p.industry || "",
+        count: p.count,
+      })),
+      topMissingSkills,
+      topMatchedSkills,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/experiences — list experiences for moderation with filters + pagination
+//   ?status=pending|approved|rejected
+//   ?companyId=<id>
+//   ?outcome=<value>
+//   ?q=<text>       search studentName or role
+//   ?page=<n>       default 1
+//   ?limit=<n>      default 20, max 100
+router.get("/experiences", requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const filter = {};
+    if (req.query.status) filter.moderationStatus = req.query.status;
+    if (req.query.companyId) filter.company = req.query.companyId;
+    if (req.query.outcome) filter.outcome = req.query.outcome;
+
+    if (req.query.q) {
+      const q = String(req.query.q).trim();
+      if (q) {
+        const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+        filter.$or = [{ studentName: rx }, { role: rx }];
+      }
+    }
+
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [experiences, total] = await Promise.all([
+      PlacementExperience.find(filter)
+        .populate("company", "name industry")
+        .sort({ postedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      PlacementExperience.countDocuments(filter),
+    ]);
+
+    res.json({ count: experiences.length, total, page, pages: Math.ceil(total / limit), experiences });
   } catch (err) {
     next(err);
   }

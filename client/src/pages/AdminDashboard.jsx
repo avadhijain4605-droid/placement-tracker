@@ -24,6 +24,18 @@ export default function AdminDashboard() {
   const stats = data?.stats || {};
   const charts = data?.charts || {};
 
+  const statCards = [
+    { label: "Companies", value: stats.totalCompanies, link: "/admin/companies" },
+    { label: "Active Drives", value: stats.activeDrives, link: "/admin/drives" },
+    { label: "Upcoming Deadlines", value: stats.upcomingDeadlines },
+    { label: "Total Students", value: stats.totalStudents, link: "/admin/students" },
+    { label: "Applications", value: stats.totalApplications, link: "/admin/applications" },
+    { label: "Students Selected", value: stats.totalSelected },
+    { label: "Experiences", value: stats.totalExperiences, link: "/admin/experiences" },
+    { label: "Pending Reviews", value: stats.pendingExperiences, link: "/admin/experiences" },
+    { label: "Prep Plans", value: stats.totalPrepPlans, link: "/admin/analytics" },
+  ];
+
   const quickActions = [
     { to: "/admin/drives/new", label: "Create Drive", desc: "Post a new placement drive." },
     { to: "/admin/announcements", label: "Post Announcement", desc: "Publish an announcement." },
@@ -33,7 +45,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <PageHeader title="Placement Cell Dashboard" subtitle="Overview of placement activities and statistics." />
+      <PageHeader title="Placement Cell Dashboard" subtitle="Overview of placement activities, students, and statistics." />
 
       {error && <div className="card p-4 border-red-200 bg-red-50 mb-4"><p className="text-sm text-red-700">{error}</p></div>}
 
@@ -49,30 +61,13 @@ export default function AdminDashboard() {
       ) : (
         <>
           <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            <div className="card p-5">
-              <p className="text-sm text-slate-500">Companies Registered</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalCompanies ?? "—"}</p>
-            </div>
-            <div className="card p-5">
-              <p className="text-sm text-slate-500">Active Drives</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.activeDrives ?? "—"}</p>
-            </div>
-            <div className="card p-5">
-              <p className="text-sm text-slate-500">Upcoming Deadlines</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.upcomingDeadlines ?? "—"}</p>
-            </div>
-            <div className="card p-5">
-              <p className="text-sm text-slate-500">Total Students</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalStudents ?? "—"}</p>
-            </div>
-            <div className="card p-5">
-              <p className="text-sm text-slate-500">Applications Submitted</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalApplications ?? "—"}</p>
-            </div>
-            <div className="card p-5">
-              <p className="text-sm text-slate-500">Students Selected</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totalSelected ?? "—"}</p>
-            </div>
+            {statCards.map((s) => (
+              <div key={s.label} className="card p-5">
+                <p className="text-sm text-slate-500">{s.label}</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">{s.value ?? "—"}</p>
+                {s.link && <Link to={s.link} className="mt-1 inline-block text-xs text-brand-600 hover:underline">View →</Link>}
+              </div>
+            ))}
           </section>
 
           {charts.driveStatus?.length > 0 && (
@@ -131,25 +126,41 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          <section className="mb-8">
-            <h2 className="mb-3 text-base font-semibold text-slate-900">Recent Drives</h2>
-            <div className="space-y-2">
-              {data?.recentDrives?.map((d) => (
-                <Link key={d._id} to={`/admin/drives/${d._id}/edit`} className="card p-4 flex items-center justify-between hover:shadow-md transition">
-                  <div>
-                    <h3 className="font-medium text-slate-900">{d.jobTitle}</h3>
-                    <p className="text-sm text-slate-500">{d.company?.name || "—"}</p>
-                  </div>
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                    d.status === "published" ? "bg-green-100 text-green-700" :
-                    d.status === "draft" ? "bg-slate-100 text-slate-600" :
-                    d.status === "closed" ? "bg-amber-100 text-amber-700" :
-                    "bg-red-100 text-red-700"
-                  }`}>{d.status}</span>
-                </Link>
-              )) || <p className="text-sm text-slate-500">No drives yet.</p>}
-            </div>
-          </section>
+          <div className="grid lg:grid-cols-2 gap-6 mb-8">
+            <section>
+              <h2 className="mb-3 text-base font-semibold text-slate-900">Recent Registrations</h2>
+              <div className="space-y-2">
+                {data?.recentStudents?.length > 0 ? data.recentStudents.map((s) => (
+                  <Link key={s._id} to="/admin/students" className="card p-3 flex items-center justify-between hover:shadow-sm transition">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{s.name}</p>
+                      <p className="text-xs text-slate-500">{s.email}</p>
+                    </div>
+                    <span className="text-xs text-slate-400">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : "—"}</span>
+                  </Link>
+                )) : <p className="text-sm text-slate-500">No students registered yet.</p>}
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mb-3 text-base font-semibold text-slate-900">Recent Experiences</h2>
+              <div className="space-y-2">
+                {data?.recentExperiences?.length > 0 ? data.recentExperiences.map((e) => (
+                  <Link key={e._id} to="/admin/experiences" className="card p-3 flex items-center justify-between hover:shadow-sm transition">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{e.studentName} — {e.role}</p>
+                      <p className="text-xs text-slate-500">{e.company?.name || "—"}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      e.moderationStatus === "approved" ? "bg-green-100 text-green-700" :
+                      e.moderationStatus === "rejected" ? "bg-red-100 text-red-700" :
+                      "bg-amber-100 text-amber-700"
+                    }`}>{e.moderationStatus}</span>
+                  </Link>
+                )) : <p className="text-sm text-slate-500">No experiences submitted yet.</p>}
+              </div>
+            </section>
+          </div>
 
           <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {quickActions.map((q) => (

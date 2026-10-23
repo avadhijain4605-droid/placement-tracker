@@ -19,6 +19,9 @@ import AdminDriveForm from "./pages/AdminDriveForm.jsx";
 import AdminApplications from "./pages/AdminApplications.jsx";
 import AdminAnnouncements from "./pages/AdminAnnouncements.jsx";
 import AdminCompanies from "./pages/AdminCompanies.jsx";
+import AdminExperiences from "./pages/AdminExperiences.jsx";
+import AdminStudents from "./pages/AdminStudents.jsx";
+import AdminAnalytics from "./pages/AdminAnalytics.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
 import AdminAudit from "./pages/AdminAudit.jsx";
 
@@ -46,6 +49,9 @@ export default function App() {
         <Route path="/admin/applications" element={<AdminApplications />} />
         <Route path="/admin/announcements" element={<AdminAnnouncements />} />
         <Route path="/admin/companies" element={<AdminCompanies />} />
+        <Route path="/admin/experiences" element={<AdminExperiences />} />
+        <Route path="/admin/students" element={<AdminStudents />} />
+        <Route path="/admin/analytics" element={<AdminAnalytics />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/audit" element={<AdminAudit />} />
         <Route path="*" element={<NotFound />} />

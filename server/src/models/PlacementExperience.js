@@ -44,11 +44,21 @@ const placementExperienceSchema = new Schema(
     overallExperience: { type: String, trim: true, default: "" },
     tips: { type: String, trim: true, default: "" },
     postedAt: { type: Date, default: Date.now },
+    moderationStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+      index: true,
+    },
+    moderatedBy: { type: Schema.Types.ObjectId, ref: "Student", default: null },
+    moderatedAt: { type: Date, default: null },
+    rejectionReason: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );
 
 placementExperienceSchema.index({ company: 1, studentName: 1 }, { unique: true });
+placementExperienceSchema.index({ moderationStatus: 1, postedAt: -1 });
 
 placementExperienceSchema.set("toJSON", {
   virtuals: true,

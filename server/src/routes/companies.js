@@ -223,4 +223,34 @@ router.put("/:id/archive", requireAuth, requireRole("admin", "super_admin"), asy
   }
 });
 
+// DELETE /api/companies/:id — permanently delete a company (admin/super_admin)
+// Also nullifies references in PlacementExperience to avoid broken refs.
+router.delete("/:id", requireAuth, requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const company = await Company.findByIdAndDelete(req.params.id).lean();
+    if (!company) return res.status(404).json({ error: "Company not found." });
+
+    // Nullify references in experiences rather than deleting them
+    const { default: PlacementExperience } = await import("../models/PlacementExperience.js");
+    await PlacementExperience.updateMany(
+      { company: company._id },
+      { $unset: { company: "" } }
+    );
+
+    await logAction({
+      actor: req.studentId,
+      actorName: req.studentName || "",
+      actorRole: req.studentRole,
+      action: "delete_company",
+      resource: "Company",
+      resourceId: company._id,
+      details: `Permanently deleted company "${company.name}"`,
+    });
+
+    res.json({ deleted: true, company });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

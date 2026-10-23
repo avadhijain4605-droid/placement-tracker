@@ -103,10 +103,23 @@ export const api = {
   markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: "PUT" }),
   markAllNotificationsRead: () => request("/notifications/read-all", { method: "PUT" }),
 
+  // Experiences (moderation)
+  moderateExperience: (id, status, rejectionReason) =>
+    request(`/experiences/${id}/moderate`, { method: "PUT", body: { status, rejectionReason } }),
+
+  // Companies (admin) — delete
+  deleteCompany: (id) => request(`/companies/${id}`, { method: "DELETE" }),
+
   // Admin
   adminDashboard: () => request("/admin/dashboard"),
   adminUsers: () => request("/admin/users"),
   adminChangeRole: (id, role) => request(`/admin/users/${id}/role`, { method: "PUT", body: { role } }),
   adminArchiveUser: (id) => request(`/admin/users/${id}/archive`, { method: "PUT" }),
   adminAuditLogs: (params = {}) => request(`/admin/audit${buildQuery(params)}`),
+  adminStudents: (params = {}) => request(`/admin/students${buildQuery(params)}`),
+  adminStudentDetail: (id) => request(`/admin/students/${id}`),
+  adminSuspendStudent: (id) => request(`/admin/students/${id}/suspend`, { method: "PUT" }),
+  adminReactivateStudent: (id) => request(`/admin/students/${id}/reactivate`, { method: "PUT" }),
+  adminExperiences: (params = {}) => request(`/admin/experiences${buildQuery(params)}`),
+  adminAnalytics: () => request("/admin/analytics"),
 };

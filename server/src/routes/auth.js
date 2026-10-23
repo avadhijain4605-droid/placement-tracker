@@ -79,7 +79,7 @@ router.post("/signup", async (req, res, next) => {
       passwordHash,
     });
 
-    const token = signToken(student._id, student.role);
+    const token = signToken(student._id, student.role, student.name);
     setSessionCookie(res, token, req);
     res.status(201).json({ student: student.toJSON() });
   } catch (err) {
@@ -116,7 +116,7 @@ router.post("/login", async (req, res, next) => {
       return res.status(401).json({ error: "Invalid email or password." });
     }
 
-    const token = signToken(student._id, student.role);
+    const token = signToken(student._id, student.role, student.name);
     setSessionCookie(res, token, req);
     res.json({ student: student.toJSON() });
   } catch (err) {

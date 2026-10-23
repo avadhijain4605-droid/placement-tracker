@@ -42,9 +42,10 @@ const studentSchema = new Schema(
     codingProfiles: [codingProfileSchema],
     role: {
       type: String,
-      enum: ["student", "admin"],
+      enum: ["student", "admin", "super_admin"],
       default: "student",
     },
+    archived: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

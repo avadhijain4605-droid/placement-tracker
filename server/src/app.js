@@ -10,6 +10,11 @@ import experiencesRouter from "./routes/experiences.js";
 import studentsRouter from "./routes/students.js";
 import authRouter from "./routes/auth.js";
 import aiRouter from "./routes/ai.js";
+import drivesRouter from "./routes/drives.js";
+import applicationsRouter from "./routes/applications.js";
+import announcementsRouter from "./routes/announcements.js";
+import notificationsRouter from "./routes/notifications.js";
+import adminRouter from "./routes/admin.js";
 
 // Resolve the server directory regardless of the process working directory,
 // so .env is always found whether running locally or in the Bolt host.
@@ -51,6 +56,11 @@ app.use("/api/companies", companiesRouter);
 app.use("/api/experiences", experiencesRouter);
 app.use("/api/students", studentsRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/drives", drivesRouter);
+app.use("/api/applications", applicationsRouter);
+app.use("/api/announcements", announcementsRouter);
+app.use("/api/notifications", notificationsRouter);
+app.use("/api/admin", adminRouter);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found", path: req.originalUrl });

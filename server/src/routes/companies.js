@@ -1,8 +1,9 @@
 import { Router } from "express";
 import Company from "../models/Company.js";
 import { requireDb } from "../config/db.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 import { generateCompanyIntelligence } from "../services/gemini.js";
+import { logAction } from "../services/auditLogger.js";
 
 const router = Router();
 
@@ -46,6 +47,15 @@ router.get("/", async (req, res, next) => {
         break;
       default:
         sort = { name: 1 };
+    }
+
+    // Exclude archived companies for non-admin users
+    const isAdmin = req.studentRole === "admin" || req.studentRole === "super_admin";
+    // requireAuth may not be applied on this route, so check req.studentRole safely
+    if (!isAdmin) {
+      filter.archived = { $ne: true };
+    } else if (req.query.archived === "true") {
+      filter.archived = true;
     }
 
     const companies = await Company.find(filter).sort(sort).lean();
@@ -128,10 +138,85 @@ router.post("/", requireAuth, async (req, res, next) => {
 });
 
 // GET /api/companies/:id — single company with all intelligence fields.
-router.get("/:id", async (req, res, next) => {
+// Sensitive recruiter contact is only visible to admins.
+router.get("/:id", requireAuth, async (req, res, next) => {
   try {
     const company = await Company.findById(req.params.id).lean();
     if (!company) return res.status(404).json({ error: "Company not found" });
+
+    const isAdmin = req.studentRole === "admin" || req.studentRole === "super_admin";
+    if (!isAdmin && company.archived) {
+      return res.status(404).json({ error: "Company not found" });
+    }
+    if (!isAdmin) {
+      delete company.recruiterContact;
+    }
+
+    res.json({ company });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/companies/:id — update a company (admin/super_admin)
+router.put("/:id", requireAuth, requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const data = req.body || {};
+    const update = {};
+    const allowed = [
+      "name", "website", "industry", "headquarters", "description", "roles",
+      "eligibilityCriteria", "requiredSkills", "hiringProcess", "oaPatterns",
+      "interviewQuestions", "preparationResources", "applicationDeadline",
+      "logoUrl", "active", "recruiterContact",
+    ];
+    for (const f of allowed) {
+      if (data[f] !== undefined) update[f] = data[f];
+    }
+
+    const company = await Company.findByIdAndUpdate(
+      req.params.id,
+      { $set: update },
+      { new: true, runValidators: true }
+    ).lean();
+    if (!company) return res.status(404).json({ error: "Company not found." });
+
+    await logAction({
+      actor: req.studentId,
+      actorName: req.studentName || "",
+      actorRole: req.studentRole,
+      action: "update_company",
+      resource: "Company",
+      resourceId: company._id,
+      details: `Updated company "${company.name}"`,
+    });
+
+    res.json({ company });
+  } catch (err) {
+    if (err.name === "ValidationError") return res.status(400).json({ error: err.message });
+    next(err);
+  }
+});
+
+// PUT /api/companies/:id/archive — archive/unarchive a company (admin/super_admin)
+router.put("/:id/archive", requireAuth, requireRole("admin", "super_admin"), async (req, res, next) => {
+  try {
+    const company = await Company.findByIdAndUpdate(
+      req.params.id,
+      { $set: { archived: true } },
+      { new: true }
+    ).lean();
+    if (!company) return res.status(404).json({ error: "Company not found." });
+
+    await logAction({
+      actor: req.studentId,
+      actorName: req.studentName || "",
+      actorRole: req.studentRole,
+      action: "archive_company",
+      resource: "Company",
+      resourceId: company._id,
+      details: `Archived company "${company.name}"`,
+    });
+
     res.json({ company });
   } catch (err) {
     next(err);

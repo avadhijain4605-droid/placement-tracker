@@ -8,6 +8,7 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/seed.js",
+    "create-super-admin": "node src/createSuperAdmin.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

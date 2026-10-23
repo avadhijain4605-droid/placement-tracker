@@ -3,8 +3,8 @@ import jwt from "jsonwebtoken";
 const JWT_SECRET = process.env.JWT_SECRET || "dev-only-change-me";
 const TOKEN_COOKIE = "pt_session";
 
-export function signToken(studentId, role) {
-  return jwt.sign({ sub: String(studentId), role: role || "student" }, JWT_SECRET, {
+export function signToken(studentId, role, name) {
+  return jwt.sign({ sub: String(studentId), role: role || "student", name: name || "" }, JWT_SECRET, {
     expiresIn: "7d",
   });
 }
@@ -30,6 +30,7 @@ export function requireAuth(req, res, next) {
     const payload = jwt.verify(token, JWT_SECRET);
     req.studentId = payload.sub;
     req.studentRole = payload.role || "student";
+    req.studentName = payload.name || "";
     next();
   } catch (err) {
     return res.status(401).json({ error: "Invalid or expired session." });

@@ -69,4 +69,44 @@ export const api = {
   listProgress: () => request("/ai/progress"),
   toggleTask: (progressId, taskId) =>
     request(`/ai/progress/${progressId}/toggle`, { method: "PUT", body: { taskId } }),
+
+  // ── Placement Cell module ──────────────────────────────────────────
+
+  // Companies (admin)
+  updateCompany: (id, data) => request(`/companies/${id}`, { method: "PUT", body: data }),
+  archiveCompany: (id) => request(`/companies/${id}/archive`, { method: "PUT" }),
+
+  // Drives
+  listDrives: (params = {}) => request(`/drives${buildQuery(params)}`),
+  getDrive: (id) => request(`/drives/${id}`),
+  createDrive: (data) => request("/drives", { method: "POST", body: data }),
+  updateDrive: (id, data) => request(`/drives/${id}`, { method: "PUT", body: data }),
+  updateDriveStatus: (id, status) => request(`/drives/${id}/status`, { method: "PUT", body: { status } }),
+  deleteDrive: (id) => request(`/drives/${id}`, { method: "DELETE" }),
+
+  // Applications
+  listApplications: (params = {}) => request(`/applications${buildQuery(params)}`),
+  getApplication: (id) => request(`/applications/${id}`),
+  applyToDrive: (driveId, coverNote) => request("/applications", { method: "POST", body: { driveId, coverNote } }),
+  updateApplicationStatus: (id, status, note) => request(`/applications/${id}/status`, { method: "PUT", body: { status, note } }),
+  withdrawApplication: (id) => request(`/applications/${id}/withdraw`, { method: "PUT" }),
+
+  // Announcements
+  listAnnouncements: (params = {}) => request(`/announcements${buildQuery(params)}`),
+  getAnnouncement: (id) => request(`/announcements/${id}`),
+  createAnnouncement: (data) => request("/announcements", { method: "POST", body: data }),
+  updateAnnouncement: (id, data) => request(`/announcements/${id}`, { method: "PUT", body: data }),
+  deleteAnnouncement: (id) => request(`/announcements/${id}`, { method: "DELETE" }),
+
+  // Notifications
+  listNotifications: () => request("/notifications"),
+  markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: "PUT" }),
+  markAllNotificationsRead: () => request("/notifications/read-all", { method: "PUT" }),
+
+  // Admin
+  adminDashboard: () => request("/admin/dashboard"),
+  adminUsers: () => request("/admin/users"),
+  adminChangeRole: (id, role) => request(`/admin/users/${id}/role`, { method: "PUT", body: { role } }),
+  adminArchiveUser: (id) => request(`/admin/users/${id}/archive`, { method: "PUT" }),
+  adminAuditLogs: (params = {}) => request(`/admin/audit${buildQuery(params)}`),
 };

@@ -4,25 +4,64 @@ import PageHeader from "../components/PageHeader.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { api } from "../api.js";
 
-const quickLinks = [
+const studentQuickLinks = [
+  { to: "/opportunities", title: "Placement Opportunities", desc: "Browse active drives and apply." },
   { to: "/profile", title: "Complete your profile", desc: "Add skills, resume, and target roles." },
-  { to: "/companies", title: "Explore companies", desc: "Browse hiring companies and insights." },
-  { to: "/skill-gap", title: "Run a skill-gap analysis", desc: "See which skills you're missing for a target company." },
+  { to: "/skill-gap", title: "Run a skill-gap analysis", desc: "See which skills you're missing." },
   { to: "/ai-plan", title: "Generate an AI prep plan", desc: "Get a personalized preparation roadmap." },
+];
+
+const adminQuickLinks = [
+  { to: "/admin/drives/new", title: "Create Drive", desc: "Post a new placement drive." },
+  { to: "/admin/announcements", title: "Post Announcement", desc: "Publish an announcement." },
+  { to: "/admin/applications", title: "View Applications", desc: "Review student applications." },
+  { to: "/admin/companies", title: "Manage Companies", desc: "Edit company details." },
 ];
 
 export default function Dashboard() {
   const { student } = useAuth();
   const [progress, setProgress] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = student?.role === "admin" || student?.role === "super_admin";
+  const quickLinks = isAdmin ? adminQuickLinks : studentQuickLinks;
 
   useEffect(() => {
     if (!student) return;
-    api.listProgress()
-      .then((data) => setProgress(data.progress || []))
-      .catch(() => setProgress([]))
-      .finally(() => setLoading(false));
-  }, [student]);
+    const tasks = isAdmin
+      ? [api.adminDashboard().then(() => {}).catch(() => {})]
+      : [
+          api.listProgress()
+            .then((data) => setProgress(data.progress || []))
+            .catch(() => setProgress([])),
+          api.listAnnouncements()
+            .then((data) => setAnnouncements((data.announcements || []).slice(0, 3)))
+            .catch(() => setAnnouncements([])),
+        ];
+    Promise.all(tasks).finally(() => setLoading(false));
+  }, [student, isAdmin]);
+
+  if (isAdmin) {
+    return (
+      <div>
+        <PageHeader title="Placement Cell Dashboard" subtitle="Manage all placement activities." />
+        <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {quickLinks.map((q) => (
+            <Link key={q.to} to={q.to} className="card p-5 hover:shadow-md hover:border-brand-200 transition group">
+              <h3 className="font-semibold text-slate-900 group-hover:text-brand-700">{q.title}</h3>
+              <p className="mt-1 text-sm text-slate-500">{q.desc}</p>
+              <span className="mt-3 inline-block text-sm font-medium text-brand-600">Get started →</span>
+            </Link>
+          ))}
+        </section>
+        <div className="card p-6">
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">Full Statistics</h2>
+          <p className="text-sm text-slate-500">Visit the <Link to="/admin/dashboard" className="text-brand-600 hover:underline">Admin Dashboard</Link> for detailed statistics and charts.</p>
+        </div>
+      </div>
+    );
+  }
 
   const totalTasks = progress.reduce((sum, p) => sum + (p.tasks?.length || 0), 0);
   const doneTasks = progress.reduce(
@@ -76,6 +115,25 @@ export default function Dashboard() {
           <p className="mt-1 text-xs text-slate-400">Of analyzed companies</p>
         </div>
       </section>
+
+      {/* Recent announcements */}
+      {announcements.length > 0 && (
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-slate-900">Recent Announcements</h2>
+            <Link to="/announcements" className="text-sm font-medium text-brand-600">View all →</Link>
+          </div>
+          <div className="space-y-3">
+            {announcements.map((ann) => (
+              <div key={ann._id} className="card p-4">
+                <h3 className="font-medium text-slate-900">{ann.title}</h3>
+                <p className="mt-1 text-sm text-slate-600 line-clamp-2">{ann.content}</p>
+                <p className="mt-1 text-xs text-slate-400">{ann.publishedAt ? new Date(ann.publishedAt).toLocaleDateString() : new Date(ann.createdAt).toLocaleDateString()}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Saved analyses */}
       {progress.length > 0 && (

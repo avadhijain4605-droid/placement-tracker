@@ -71,6 +71,12 @@ const companySchema = new Schema(
     applicationDeadline: { type: Date },
     logoUrl: { type: String, trim: true, default: "" },
     active: { type: Boolean, default: true },
+    recruiterContact: {
+      name: { type: String, trim: true, default: "" },
+      email: { type: String, trim: true, default: "" },
+      phone: { type: String, trim: true, default: "" },
+    },
+    archived: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

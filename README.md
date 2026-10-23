@@ -271,3 +271,116 @@ After running `npm run seed`, confirm the data three ways:
    ```
 
 The Student collection is intentionally empty after seeding (students are created during signup in a later step).
+
+---
+
+## Placement Cell Management Module
+
+The platform includes a full placement cell management system with three user roles: **Student**, **Placement Cell Admin**, and **Super Admin**.
+
+### User Roles & Permissions
+
+| Role | Permissions |
+| ---- | ----------- |
+| Student | View published drives & announcements, apply to drives, view own application status, access AI prep features |
+| Admin | Everything a student can do + manage companies, drives, applications, announcements, view dashboard stats |
+| Super Admin | Everything an admin can do + manage user roles, view audit logs, archive users |
+
+### Creating the First Super Admin
+
+After installing dependencies and setting up MongoDB, create a super admin account:
+
+```bash
+cd server
+npm run create-super-admin -- --email=superadmin@yourcollege.edu --name="Super Admin"
+```
+
+You will be prompted to enter a password (minimum 8 characters, must contain a letter and a number). The script creates the account or, if the email already exists, promotes that account to `super_admin`.
+
+Once logged in as super admin, you can promote other users to `admin` via the **Users** page in the admin panel.
+
+### New Environment Variables
+
+No new environment variables are required. The module reuses `MONGODB_URI`, `JWT_SECRET`, and `CLIENT_ORIGIN` already in your `.env`.
+
+### New API Endpoints
+
+| Method | Path | Auth | Description |
+| ------ | ---- | ---- | ----------- |
+| GET | `/api/drives` | Auth | List drives (students see published only; admins see all) |
+| GET | `/api/drives/:id` | Auth | Drive detail with eligibility check for students |
+| POST | `/api/drives` | Admin | Create a drive |
+| PUT | `/api/drives/:id` | Admin | Update a drive |
+| PUT | `/api/drives/:id/status` | Admin | Change drive status (draft/published/closed/archived) |
+| DELETE | `/api/drives/:id` | Admin | Archive a drive (soft delete) |
+| GET | `/api/applications` | Auth | List applications (students see own; admins see all) |
+| POST | `/api/applications` | Student | Apply to a published drive |
+| PUT | `/api/applications/:id/status` | Admin | Update application status |
+| PUT | `/api/applications/:id/withdraw` | Student | Withdraw own application |
+| GET | `/api/announcements` | Auth | List announcements (students see published only) |
+| POST | `/api/announcements` | Admin | Create announcement |
+| PUT | `/api/announcements/:id` | Admin | Update announcement |
+| DELETE | `/api/announcements/:id` | Admin | Delete announcement |
+| GET | `/api/notifications` | Auth | List notifications |
+| PUT | `/api/notifications/:id/read` | Auth | Mark notification as read |
+| PUT | `/api/notifications/read-all` | Auth | Mark all as read |
+| GET | `/api/admin/dashboard` | Admin | Dashboard statistics + charts |
+| GET | `/api/admin/users` | Super Admin | List all users |
+| PUT | `/api/admin/users/:id/role` | Super Admin | Change user role |
+| PUT | `/api/admin/users/:id/archive` | Super Admin | Archive a user |
+| GET | `/api/admin/audit` | Super Admin | View audit logs |
+| PUT | `/api/companies/:id` | Admin | Update a company |
+| PUT | `/api/companies/:id/archive` | Admin | Archive a company |
+
+### New Mongoose Models
+
+- **PlacementDrive** — company reference, job details, eligibility criteria, package, deadlines, status, selection rounds
+- **PlacementApplication** — student/drive reference, status, status history (unique per student+drive)
+- **Announcement** — title, content, category, published flag, optional drive link
+- **Notification** — per-student in-app notifications with read/unread state
+- **AuditLog** — records all admin actions (create, update, publish, archive, role change, etc.)
+
+### Security Features
+
+- All admin endpoints protected with server-side `requireRole` middleware
+- Role is set from the database at login time, never from the client request body
+- Students cannot access admin APIs (returns 403)
+- Admins cannot access super-admin-only APIs (returns 403)
+- Recruiter contact info is hidden from students
+- Soft deletion (archival) for drives and companies — no data is permanently lost
+- All admin actions are logged in the audit trail
+- Application status changes generate in-app notifications for the student
+
+### Testing the Placement Cell Workflow
+
+Run the test suite:
+
+```bash
+cd server
+npm test
+```
+
+The `placementCell.test.js` file covers:
+- Student vs admin drive visibility
+- Drive CRUD with role enforcement
+- Application submission, duplicate prevention, status updates
+- Student can withdraw but not change status
+- Admin dashboard access control
+- Super admin user management (role changes, self-demotion prevention)
+- Announcement creation and visibility filtering
+- Company edit/archive with admin-only access
+- Recruiter contact hidden from students
+- Signup role enforcement (cannot self-promote)
+
+### Manual Verification Checklist
+
+1. Sign up as a regular user (gets `student` role automatically)
+2. Run `npm run create-super-admin -- --email=<your-email>` to create a super admin
+3. Log in as super admin → go to **Users** → promote a user to **admin**
+4. As admin: create a company, create a drive (save as draft), publish it
+5. As student: browse **Opportunities**, view drive details, see eligibility status
+6. As student: apply to a published drive
+7. As admin: go to **Applications**, update the student's status (e.g. shortlisted)
+8. As student: check **My Applications** — status should reflect the update
+9. As admin: post an announcement → students should see it on their dashboard
+10. As super admin: check **Audit Log** — all admin actions should be recorded

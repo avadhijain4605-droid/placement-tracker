@@ -24,6 +24,7 @@ import AdminStudents from "./pages/AdminStudents.jsx";
 import AdminAnalytics from "./pages/AdminAnalytics.jsx";
 import AdminUsers from "./pages/AdminUsers.jsx";
 import AdminAudit from "./pages/AdminAudit.jsx";
+import AdminLogin from "./pages/AdminLogin.jsx";
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/profile" element={<StudentProfile />} />
         <Route path="/companies" element={<Companies />} />

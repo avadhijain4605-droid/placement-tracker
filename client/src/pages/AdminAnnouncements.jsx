@@ -14,7 +14,7 @@ const CATEGORIES = [
 ];
 
 export default function AdminAnnouncements() {
-  const { student } = useAuth();
+  const { student, loading: authLoading } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -26,7 +26,8 @@ export default function AdminAnnouncements() {
   const [form, setForm] = useState({ title: "", content: "", category: "general", published: false });
 
   const isAdmin = student?.role === "admin" || student?.role === "super_admin";
-  if (!student) return <Navigate to="/login" replace />;
+  if (authLoading) return <div className="text-center py-16 text-slate-500">Loading...</div>;
+  if (!student) return <Navigate to="/admin/login" replace />;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const load = useCallback(async () => {

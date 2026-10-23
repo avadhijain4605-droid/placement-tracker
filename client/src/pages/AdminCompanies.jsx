@@ -17,7 +17,7 @@ const emptyForm = {
 };
 
 export default function AdminCompanies() {
-  const { student } = useAuth();
+  const { student, loading: authLoading } = useAuth();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -34,7 +34,8 @@ export default function AdminCompanies() {
   const [createError, setCreateError] = useState("");
 
   const isAdmin = student?.role === "admin" || student?.role === "super_admin";
-  if (!student) return <Navigate to="/login" replace />;
+  if (authLoading) return <div className="text-center py-16 text-slate-500">Loading...</div>;
+  if (!student) return <Navigate to="/admin/login" replace />;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const pageSize = 10;

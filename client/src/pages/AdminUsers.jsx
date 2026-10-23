@@ -11,7 +11,7 @@ const ROLE_STYLES = {
 };
 
 export default function AdminUsers() {
-  const { student } = useAuth();
+  const { student, loading: authLoading } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -19,7 +19,8 @@ export default function AdminUsers() {
   const [changingId, setChangingId] = useState(null);
 
   const isSuperAdmin = student?.role === "super_admin";
-  if (!student) return <Navigate to="/login" replace />;
+  if (authLoading) return <div className="text-center py-16 text-slate-500">Loading...</div>;
+  if (!student) return <Navigate to="/admin/login" replace />;
   if (!isSuperAdmin) return <Navigate to="/admin/dashboard" replace />;
 
   const load = useCallback(async () => {

@@ -11,15 +11,21 @@ export default function Login() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  if (student) return <Navigate to="/dashboard" replace />;
+  const isAdmin = student?.role === "admin" || student?.role === "super_admin";
+
+  if (student) return <Navigate to={isAdmin ? "/admin/dashboard" : "/dashboard"} replace />;
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setBusy(true);
     try {
-      await login(email.trim(), password);
-      navigate("/dashboard");
+      const user = await login(email.trim(), password);
+      if (user.role === "admin" || user.role === "super_admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err) {
       setError(err.message || "Login failed.");
     } finally {

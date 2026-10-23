@@ -12,7 +12,7 @@ const STATUS_STYLES = {
 };
 
 export default function AdminDrives() {
-  const { student } = useAuth();
+  const { student, loading: authLoading } = useAuth();
   const [drives, setDrives] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -20,7 +20,8 @@ export default function AdminDrives() {
   const [search, setSearch] = useState("");
 
   const isAdmin = student?.role === "admin" || student?.role === "super_admin";
-  if (!student) return <Navigate to="/login" replace />;
+  if (authLoading) return <div className="text-center py-16 text-slate-500">Loading...</div>;
+  if (!student) return <Navigate to="/admin/login" replace />;
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const load = useCallback(async () => {

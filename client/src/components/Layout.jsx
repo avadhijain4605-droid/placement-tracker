@@ -6,6 +6,7 @@ const navItems = [
   { to: "/profile", label: "My Profile" },
   { to: "/companies", label: "Companies" },
   { to: "/ai-plan", label: "AI Prep Plan" },
+  { to: "/skill-gap", label: "Skill Gap" },
 ];
 
 export default function Layout() {

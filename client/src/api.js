@@ -64,4 +64,9 @@ export const api = {
   updateProfile: (data) => request("/students/me", { method: "PUT", body: data }),
   generatePlan: (companyId, availableDays) =>
     request("/ai/preparation-plan", { method: "POST", body: { companyId, availableDays } }),
+  skillGap: (companyId) =>
+    request("/ai/skill-gap", { method: "POST", body: { companyId } }),
+  listProgress: () => request("/ai/progress"),
+  toggleTask: (progressId, taskId) =>
+    request(`/ai/progress/${progressId}/toggle`, { method: "PUT", body: { taskId } }),
 };

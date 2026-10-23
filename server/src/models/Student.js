@@ -22,6 +22,8 @@ const studentSchema = new Schema(
     college: { type: String, trim: true, default: "" },
     graduationYear: { type: Number, min: 2000, max: 2100 },
     cgpa: { type: Number, min: 0, max: 10 },
+    branch: { type: String, trim: true, default: "" },
+    backlogs: { type: Number, min: 0, default: 0 },
     skills: [{ type: String, trim: true }],
     projects: [
       {

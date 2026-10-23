@@ -7,6 +7,7 @@ import StudentProfile from "./pages/StudentProfile.jsx";
 import Companies from "./pages/Companies.jsx";
 import CompanyDetails from "./pages/CompanyDetails.jsx";
 import AiPrepPlan from "./pages/AiPrepPlan.jsx";
+import SkillGapAnalysis from "./pages/SkillGapAnalysis.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/companies" element={<Companies />} />
         <Route path="/companies/:id" element={<CompanyDetails />} />
         <Route path="/ai-plan" element={<AiPrepPlan />} />
+        <Route path="/skill-gap" element={<SkillGapAnalysis />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

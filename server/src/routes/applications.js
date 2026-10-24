@@ -1,7 +1,6 @@
 import { Router } from "express";
 import PlacementApplication from "../models/PlacementApplication.js";
 import PlacementDrive from "../models/PlacementDrive.js";
-import Notification from "../models/Notification.js";
 import { requireDb } from "../config/db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { logAction } from "../services/auditLogger.js";
@@ -127,14 +126,6 @@ router.put("/:id/status", requireRole("admin", "super_admin"), async (req, res, 
       changedAt: new Date(),
     });
     await app.save();
-
-    // Notify the student
-    await Notification.create({
-      student: app.student,
-      title: `Application status updated: ${status}`,
-      message: `Your application status has been updated from "${oldStatus}" to "${status}".${note ? " Note: " + note : ""}`,
-      link: "/applications",
-    });
 
     await logAction({
       actor: req.studentId,

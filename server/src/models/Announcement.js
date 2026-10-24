@@ -14,12 +14,14 @@ const announcementSchema = new Schema(
     drive: { type: Schema.Types.ObjectId, ref: "PlacementDrive", default: null },
     published: { type: Boolean, default: false },
     publishedAt: { type: Date },
+    expiresAt: { type: Date, default: null },
     createdBy: { type: Schema.Types.ObjectId, ref: "Student" },
   },
   { timestamps: true }
 );
 
 announcementSchema.index({ published: 1, publishedAt: -1 });
+announcementSchema.index({ expiresAt: 1 });
 
 announcementSchema.set("toJSON", {
   virtuals: true,

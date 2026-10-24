@@ -1,7 +1,5 @@
 import { Router } from "express";
 import Announcement from "../models/Announcement.js";
-import Notification from "../models/Notification.js";
-import Student from "../models/Student.js";
 import { requireDb } from "../config/db.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { logAction } from "../services/auditLogger.js";
@@ -12,7 +10,7 @@ router.use(requireDb);
 
 // ── Student routes ─────────────────────────────────────────────────
 
-// GET /api/announcements — students see published announcements
+// GET /api/announcements — students see published, non-expired announcements
 router.get("/", requireAuth, async (req, res, next) => {
   try {
     const isAdmin = req.studentRole === "admin" || req.studentRole === "super_admin";
@@ -20,6 +18,12 @@ router.get("/", requireAuth, async (req, res, next) => {
 
     if (!isAdmin) {
       filter.published = true;
+      // Exclude expired announcements (expiresAt in the past)
+      filter.$or = [
+        { expiresAt: null },
+        { expiresAt: { $exists: false } },
+        { expiresAt: { $gt: new Date() } },
+      ];
     }
 
     if (req.query.category) filter.category = req.query.category;
@@ -46,6 +50,11 @@ router.get("/:id", requireAuth, async (req, res, next) => {
       return res.status(404).json({ error: "Announcement not found." });
     }
 
+    // Students cannot view expired announcements
+    if (!isAdmin && ann.expiresAt && new Date(ann.expiresAt) < new Date()) {
+      return res.status(404).json({ error: "Announcement not found." });
+    }
+
     res.json({ announcement: ann });
   } catch (err) {
     next(err);
@@ -57,7 +66,7 @@ router.get("/:id", requireAuth, async (req, res, next) => {
 // POST /api/announcements — create announcement (admin/super_admin)
 router.post("/", requireAuth, requireRole("admin", "super_admin"), async (req, res, next) => {
   try {
-    const { title, content, category, driveId, published } = req.body || {};
+    const { title, content, category, driveId, published, expiresAt } = req.body || {};
     if (!title || !content) {
       return res.status(400).json({ error: "Title and content are required." });
     }
@@ -69,23 +78,9 @@ router.post("/", requireAuth, requireRole("admin", "super_admin"), async (req, r
       drive: driveId || null,
       published: published || false,
       publishedAt: published ? new Date() : null,
+      expiresAt: expiresAt || null,
       createdBy: req.studentId,
     });
-
-    // If published, notify all students
-    if (published) {
-      const students = await Student.find({ role: "student", archived: { $ne: true } }, { _id: 1 }).lean();
-      if (students.length > 0) {
-        const notifications = students.map((s) => ({
-          student: s._id,
-          title: `Announcement: ${title}`,
-          message: content.substring(0, 200),
-          link: "/announcements",
-          announcement: ann._id,
-        }));
-        await Notification.insertMany(notifications);
-      }
-    }
 
     await logAction({
       actor: req.studentId,
@@ -106,7 +101,7 @@ router.post("/", requireAuth, requireRole("admin", "super_admin"), async (req, r
 // PUT /api/announcements/:id — update announcement (admin/super_admin)
 router.put("/:id", requireAuth, requireRole("admin", "super_admin"), async (req, res, next) => {
   try {
-    const { title, content, category, driveId, published } = req.body || {};
+    const { title, content, category, driveId, published, expiresAt } = req.body || {};
     const ann = await Announcement.findById(req.params.id);
     if (!ann) return res.status(404).json({ error: "Announcement not found." });
 
@@ -114,23 +109,12 @@ router.put("/:id", requireAuth, requireRole("admin", "super_admin"), async (req,
     if (content !== undefined) ann.content = content;
     if (category !== undefined) ann.category = category;
     if (driveId !== undefined) ann.drive = driveId || null;
+    if (expiresAt !== undefined) ann.expiresAt = expiresAt || null;
 
     if (published !== undefined) {
       if (published && !ann.published) {
         ann.published = true;
         ann.publishedAt = new Date();
-        // Notify students
-        const students = await Student.find({ role: "student", archived: { $ne: true } }, { _id: 1 }).lean();
-        if (students.length > 0) {
-          const notifications = students.map((s) => ({
-            student: s._id,
-            title: `Announcement: ${ann.title}`,
-            message: ann.content.substring(0, 200),
-            link: "/announcements",
-            announcement: ann._id,
-          }));
-          await Notification.insertMany(notifications);
-        }
       } else if (!published) {
         ann.published = false;
       }

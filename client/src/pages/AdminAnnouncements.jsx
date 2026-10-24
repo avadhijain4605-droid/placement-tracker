@@ -13,6 +13,13 @@ const CATEGORIES = [
   { value: "general", label: "General" },
 ];
 
+function toDateInput(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString().split("T")[0];
+}
+
 export default function AdminAnnouncements() {
   const { student, loading: authLoading } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
@@ -23,7 +30,13 @@ export default function AdminAnnouncements() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
 
-  const [form, setForm] = useState({ title: "", content: "", category: "general", published: false });
+  const [form, setForm] = useState({
+    title: "",
+    content: "",
+    category: "general",
+    published: false,
+    expiresAt: "",
+  });
 
   const isAdmin = student?.role === "admin" || student?.role === "super_admin";
   if (authLoading) return <div className="text-center py-16 text-slate-500">Loading...</div>;
@@ -48,14 +61,20 @@ export default function AdminAnnouncements() {
   }, [load]);
 
   function resetForm() {
-    setForm({ title: "", content: "", category: "general", published: false });
+    setForm({ title: "", content: "", category: "general", published: false, expiresAt: "" });
     setEditing(null);
     setShowForm(false);
     setFormError("");
   }
 
   function startEdit(ann) {
-    setForm({ title: ann.title, content: ann.content, category: ann.category, published: ann.published });
+    setForm({
+      title: ann.title,
+      content: ann.content,
+      category: ann.category,
+      published: ann.published,
+      expiresAt: toDateInput(ann.expiresAt),
+    });
     setEditing(ann._id);
     setShowForm(true);
     setFormError("");
@@ -70,10 +89,17 @@ export default function AdminAnnouncements() {
     setSaving(true);
     setFormError("");
     try {
+      const payload = {
+        title: form.title,
+        content: form.content,
+        category: form.category,
+        published: form.published,
+        expiresAt: form.expiresAt || null,
+      };
       if (editing) {
-        await api.updateAnnouncement(editing, form);
+        await api.updateAnnouncement(editing, payload);
       } else {
-        await api.createAnnouncement(form);
+        await api.createAnnouncement(payload);
       }
       resetForm();
       await load();
@@ -103,23 +129,35 @@ export default function AdminAnnouncements() {
     }
   }
 
+  function isExpired(ann) {
+    return ann.expiresAt && new Date(ann.expiresAt) < new Date();
+  }
+
   return (
     <div>
       <PageHeader
         title="Announcements"
         subtitle="Create and manage placement announcements."
-        actions={<button className="btn-primary" onClick={() => { resetForm(); setShowForm(!showForm); }}>{showForm ? "Cancel" : "+ New Announcement"}</button>}
+        actions={
+          <button className="btn-primary" onClick={() => { resetForm(); setShowForm(!showForm); }}>
+            {showForm ? "Cancel" : "+ New Announcement"}
+          </button>
+        }
       />
 
       {showForm && (
         <form onSubmit={handleSubmit} className="card p-6 mb-6 space-y-4">
-          {formError && <div className="rounded-lg bg-red-50 border border-red-200 p-3"><p className="text-sm text-red-700">{formError}</p></div>}
+          {formError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+              <p className="text-sm text-red-700">{formError}</p>
+            </div>
+          )}
           <div>
-            <label className="label" htmlFor="annTitle">Title *</label>
+            <label className="label" htmlFor="annTitle">Title <span className="text-red-500">*</span></label>
             <input id="annTitle" className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </div>
           <div>
-            <label className="label" htmlFor="annContent">Content *</label>
+            <label className="label" htmlFor="annContent">Content <span className="text-red-500">*</span></label>
             <textarea id="annContent" className="input min-h-24" value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} required />
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
@@ -129,13 +167,26 @@ export default function AdminAnnouncements() {
                 {CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
-            <label className="flex items-center gap-2 mt-6">
-              <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
-              <span className="text-sm text-slate-700">Publish immediately</span>
-            </label>
+            <div>
+              <label className="label" htmlFor="annExpiry">Expiry date (optional)</label>
+              <input
+                id="annExpiry"
+                type="date"
+                className="input"
+                value={form.expiresAt}
+                onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+              />
+              <p className="mt-1 text-xs text-slate-400">Expired announcements are hidden from students.</p>
+            </div>
           </div>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={form.published} onChange={(e) => setForm({ ...form, published: e.target.checked })} />
+            <span className="text-sm text-slate-700">Publish immediately</span>
+          </label>
           <div className="flex gap-2">
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? "Saving..." : editing ? "Update" : "Create"}</button>
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? "Saving..." : editing ? "Update" : "Create"}
+            </button>
             <button type="button" className="btn-secondary" onClick={resetForm}>Cancel</button>
           </div>
         </form>
@@ -155,27 +206,42 @@ export default function AdminAnnouncements() {
 
       {!loading && !error && announcements.length > 0 && (
         <div className="space-y-3">
-          {announcements.map((ann) => (
-            <div key={ann._id} className="card p-5">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <div>
-                  <h3 className="font-semibold text-slate-900">{ann.title}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ann.published ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
-                    {ann.published ? "Published" : "Draft"}
-                  </span>
+          {announcements.map((ann) => {
+            const expired = isExpired(ann);
+            return (
+              <div key={ann._id} className={`card p-5 ${expired ? "opacity-60" : ""}`}>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div>
+                    <h3 className="font-semibold text-slate-900">{ann.title}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ann.published ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+                        {ann.published ? "Published" : "Draft"}
+                      </span>
+                      {expired && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+                          Expired
+                        </span>
+                      )}
+                      {ann.expiresAt && !expired && (
+                        <span className="text-xs text-slate-400">
+                          Expires {new Date(ann.expiresAt).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleTogglePublish(ann)} className="text-xs text-brand-600 hover:underline">
+                      {ann.published ? "Unpublish" : "Publish"}
+                    </button>
+                    <button onClick={() => startEdit(ann)} className="text-xs text-slate-600 hover:underline">Edit</button>
+                    <button onClick={() => handleDelete(ann._id)} className="text-xs text-red-600 hover:underline">Delete</button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => handleTogglePublish(ann)} className="text-xs text-brand-600 hover:underline">
-                    {ann.published ? "Unpublish" : "Publish"}
-                  </button>
-                  <button onClick={() => startEdit(ann)} className="text-xs text-slate-600 hover:underline">Edit</button>
-                  <button onClick={() => handleDelete(ann._id)} className="text-xs text-red-600 hover:underline">Delete</button>
-                </div>
+                <p className="text-sm text-slate-600 line-clamp-3">{ann.content}</p>
+                <p className="mt-2 text-xs text-slate-400 capitalize">{ann.category.replace("-", " ")} • {new Date(ann.createdAt).toLocaleDateString()}</p>
               </div>
-              <p className="text-sm text-slate-600 line-clamp-3">{ann.content}</p>
-              <p className="mt-2 text-xs text-slate-400 capitalize">{ann.category} • {new Date(ann.createdAt).toLocaleDateString()}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

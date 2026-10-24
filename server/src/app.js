@@ -13,7 +13,6 @@ import aiRouter from "./routes/ai.js";
 import drivesRouter from "./routes/drives.js";
 import applicationsRouter from "./routes/applications.js";
 import announcementsRouter from "./routes/announcements.js";
-import notificationsRouter from "./routes/notifications.js";
 import adminRouter from "./routes/admin.js";
 
 // Resolve the server directory regardless of the process working directory,
@@ -59,7 +58,6 @@ app.use("/api/ai", aiRouter);
 app.use("/api/drives", drivesRouter);
 app.use("/api/applications", applicationsRouter);
 app.use("/api/announcements", announcementsRouter);
-app.use("/api/notifications", notificationsRouter);
 app.use("/api/admin", adminRouter);
 
 app.use((req, res) => {

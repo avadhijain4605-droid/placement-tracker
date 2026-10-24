@@ -120,11 +120,6 @@ export const api = {
   updateAnnouncement: (id, data) => request(`/announcements/${id}`, { method: "PUT", body: data }),
   deleteAnnouncement: (id) => request(`/announcements/${id}`, { method: "DELETE" }),
 
-  // Notifications
-  listNotifications: () => request("/notifications"),
-  markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: "PUT" }),
-  markAllNotificationsRead: () => request("/notifications/read-all", { method: "PUT" }),
-
   // Experiences (moderation)
   moderateExperience: (id, status, rejectionReason) =>
     request(`/experiences/${id}/moderate`, { method: "PUT", body: { status, rejectionReason } }),

@@ -3,7 +3,6 @@ import PlacementDrive from "../models/PlacementDrive.js";
 import PlacementApplication from "../models/PlacementApplication.js";
 import Company from "../models/Company.js";
 import Announcement from "../models/Announcement.js";
-import Notification from "../models/Notification.js";
 import Student from "../models/Student.js";
 import PlacementExperience from "../models/PlacementExperience.js";
 import PrepProgress from "../models/PrepProgress.js";

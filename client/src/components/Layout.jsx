@@ -33,9 +33,7 @@ const superAdminNav = [
 export default function Layout() {
   const { student, logout } = useAuth();
   const navigate = useNavigate();
-  const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [annCount, setAnnCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isAdmin = student?.role === "admin" || student?.role === "super_admin";
@@ -46,21 +44,12 @@ export default function Layout() {
     : studentNav;
 
   useEffect(() => {
-    if (student) {
-      api.listNotifications().then((data) => {
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      }).catch(() => {});
+    if (student && !isAdmin) {
+      api.listAnnouncements()
+        .then((data) => setAnnCount(data.count || 0))
+        .catch(() => {});
     }
-  }, [student]);
-
-  async function handleMarkAllRead() {
-    try {
-      await api.markAllNotificationsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-    } catch {}
-  }
+  }, [student, isAdmin]);
 
   if (isAdmin) {
     return (
@@ -159,40 +148,18 @@ export default function Layout() {
 
           <div className="flex items-center gap-2">
             {student && (
-              <div className="relative">
-                <button
-                  type="button"
-                  className="relative p-2 rounded-lg text-slate-600 hover:bg-slate-100"
-                  onClick={() => setNotifOpen(!notifOpen)}
-                >
-                  <span className="text-lg">🔔</span>
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                      {unreadCount}
-                    </span>
-                  )}
-                </button>
-                {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg z-30">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                      <span className="text-sm font-semibold text-slate-900">Notifications</span>
-                      {unreadCount > 0 && (
-                        <button onClick={handleMarkAllRead} className="text-xs text-brand-600 hover:underline">Mark all read</button>
-                      )}
-                    </div>
-                    {notifications.length === 0 ? (
-                      <p className="px-4 py-6 text-sm text-slate-400 text-center">No notifications yet.</p>
-                    ) : (
-                      notifications.map((n) => (
-                        <div key={n._id} className={`px-4 py-3 border-b border-slate-50 ${!n.read ? "bg-brand-50/40" : ""}`}>
-                          <p className="text-sm font-medium text-slate-900">{n.title}</p>
-                          <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{n.message}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
+              <Link
+                to="/announcements"
+                className="relative p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+                title="Announcements"
+              >
+                <span className="text-lg">📢</span>
+                {annCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                    {annCount > 99 ? "99+" : annCount}
+                  </span>
                 )}
-              </div>
+              </Link>
             )}
             {student ? (
               <>

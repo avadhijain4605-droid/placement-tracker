@@ -62,6 +62,21 @@ export const api = {
 
   getStudent: (id) => request(`/students/${id}`),
   updateProfile: (data) => request("/students/me", { method: "PUT", body: data }),
+  uploadResume: (file) => {
+    const formData = new FormData();
+    formData.append("resume", file);
+    return fetch(`${API_BASE}/students/me/resume`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    }).then(async (res) => {
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : null;
+      if (!res.ok) throw new Error(data?.error || "Upload failed.");
+      return data;
+    });
+  },
+  deleteResume: () => request("/students/me/resume", { method: "DELETE" }),
   generatePlan: (companyId, availableDays) =>
     request("/ai/preparation-plan", { method: "POST", body: { companyId, availableDays } }),
   skillGap: (companyId) =>

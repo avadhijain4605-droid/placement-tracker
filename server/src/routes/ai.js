@@ -9,7 +9,7 @@ import { analyzeSkillGap } from "../services/skillGap.js";
 
 const router = Router();
 
-const MIN_PROFILE_FIELDS = ["skills", "graduationYear"];
+const MIN_PROFILE_FIELDS = ["skills", "graduationYear", "branch"];
 
 router.use(requireDb, requireAuth);
 

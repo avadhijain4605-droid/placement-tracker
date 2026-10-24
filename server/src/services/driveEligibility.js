@@ -43,11 +43,12 @@ export function checkDriveEligibility(student, drive) {
 
   // Backlog check
   if (criteria.backlogAllowed === false) {
-    if (student.backlogs == null) {
+    const studentBacklogs = student.totalActiveBacklogs ?? student.backlogs;
+    if (studentBacklogs == null) {
       undetermined = true;
       reasons.push("Your backlog status is not set in your profile.");
-    } else if (student.backlogs > (criteria.maxBacklogs || 0)) {
-      reasons.push(`You have ${student.backlogs} backlog(s), but this drive allows a maximum of ${criteria.maxBacklogs || 0}.`);
+    } else if (studentBacklogs > (criteria.maxBacklogs || 0)) {
+      reasons.push(`You have ${studentBacklogs} backlog(s), but this drive allows a maximum of ${criteria.maxBacklogs || 0}.`);
     }
   }
 

@@ -169,7 +169,7 @@ export function checkEligibility(student, company) {
 
   // Backlog check
   if (criteria.backlogAllowed === false) {
-    const studentBacklogs = student.backlogs;
+    const studentBacklogs = student.totalActiveBacklogs ?? student.backlogs;
     if (studentBacklogs == null) {
       results.push({
         criterion: "Backlogs",
@@ -258,14 +258,20 @@ export function buildPrepTasks(missing, company) {
 
 // ── Full analysis ─────────────────────────────────────────────────
 export function analyzeSkillGap(student, company) {
-  const skills = matchSkills(student.skills || [], company.requiredSkills || []);
+  // Combine skills, programmingLanguages, and frameworks for a broader match.
+  const allStudentSkills = [
+    ...(student.skills || []),
+    ...(student.programmingLanguages || []),
+    ...(student.frameworks || []),
+  ];
+  const skills = matchSkills(allStudentSkills, company.requiredSkills || []);
   const eligibility = checkEligibility(student, company);
   const readiness = computeReadiness(skills.matched, skills.missing);
   const prepTasks = buildPrepTasks(skills.missing, company);
 
   return {
     companyName: company.name,
-    studentSkills: student.skills || [],
+    studentSkills: allStudentSkills,
     companySkills: company.requiredSkills || [],
     matched: skills.matched,
     missing: skills.missing,

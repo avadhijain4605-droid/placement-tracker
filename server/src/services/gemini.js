@@ -18,12 +18,41 @@ function summarizeStudent(s) {
   return {
     name: s.name,
     college: s.college || "",
+    degree: s.degree || "",
+    branch: s.branch || "",
     graduationYear: s.graduationYear,
     cgpa: s.cgpa,
+    totalActiveBacklogs: s.totalActiveBacklogs ?? 0,
+    backlogHistory: s.backlogHistory ?? 0,
+    phone: s.phone || "",
     skills: s.skills || [],
-    projects: (s.projects || []).map((p) => ({ title: p.title, description: p.description })),
-    certifications: (s.certifications || []).map((c) => ({ name: c.name, issuer: c.issuer })),
+    programmingLanguages: s.programmingLanguages || [],
+    frameworks: s.frameworks || [],
+    projects: (s.projects || []).map((p) => ({
+      title: p.title,
+      description: p.description,
+      technologies: p.technologies || [],
+      githubLink: p.githubLink || "",
+      demoLink: p.demoLink || "",
+    })),
+    internships: (s.internships || []).map((i) => ({
+      company: i.company,
+      role: i.role,
+      description: i.description,
+    })),
+    achievements: (s.achievements || []).map((a) => ({ title: a.title, description: a.description })),
+    certifications: (s.certifications || []).map((c) => ({
+      name: c.name,
+      issuer: c.issuer,
+      issueDate: c.issueDate,
+      credentialUrl: c.credentialUrl || "",
+    })),
+    hasResume: !!s.resume?.path,
     codingProfiles: (s.codingProfiles || []).map((c) => ({ platform: c.platform, url: c.url })),
+    preferredRoles: s.preferredRoles || [],
+    preferredLocations: s.preferredLocations || [],
+    jobType: s.jobType || "",
+    placementStatus: s.placementStatus || "",
   };
 }
 

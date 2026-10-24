@@ -14,7 +14,9 @@ const MIN_PROFILE_FIELDS = ["skills", "graduationYear", "branch"];
 router.use(requireDb, requireAuth);
 
 // POST /api/ai/skill-gap — deterministic skill-gap analysis (no AI call).
-// Persists the analysis as a PrepProgress document so the dashboard can show it.
+// Upserts a PrepProgress document so task progress persists across refreshes.
+// Returns the analysis AND the progress doc (with task _ids) so the frontend
+// can toggle checkboxes using the real task IDs.
 router.post("/skill-gap", async (req, res, next) => {
   try {
     const { companyId } = req.body || {};
@@ -31,13 +33,30 @@ router.post("/skill-gap", async (req, res, next) => {
 
     const analysis = analyzeSkillGap(student, company);
 
-    // Persist as PrepProgress (upsert).
-    const tasks = analysis.prepTasks.map((t) => ({
+    const newTasks = analysis.prepTasks.map((t) => ({
       skill: t.skill,
       priority: t.priority,
       reason: t.reason,
       done: false,
     }));
+
+    // Upsert: if a doc already exists for this student+company, preserve
+    // task done-status by matching on skill name. If no doc exists, create one.
+    const existing = await PrepProgress.findOne({ studentId: req.studentId, companyId });
+
+    let tasks;
+    if (existing) {
+      // Preserve done-status for skills that still exist in the new analysis.
+      const oldDoneMap = new Map(
+        (existing.tasks || []).map((t) => [t.skill.toLowerCase().trim(), t.done])
+      );
+      tasks = newTasks.map((t) => ({
+        ...t,
+        done: oldDoneMap.get(t.skill.toLowerCase().trim()) || false,
+      }));
+    } else {
+      tasks = newTasks;
+    }
 
     const progressDoc = await PrepProgress.findOneAndUpdate(
       { studentId: req.studentId, companyId },
@@ -55,7 +74,23 @@ router.post("/skill-gap", async (req, res, next) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).lean();
 
-    res.json({ analysis, progressId: progressDoc._id });
+    // Return the analysis combined with the real task _ids and done-status
+    // from the persisted doc, so the frontend can toggle by _id.
+    const analysisWithTasks = {
+      ...analysis,
+      prepTasks: progressDoc.tasks.map((t) => ({
+        _id: t._id,
+        skill: t.skill,
+        priority: t.priority,
+        reason: t.reason,
+        done: t.done,
+        resourceTitles: analysis.prepTasks.find(
+          (pt) => pt.skill === t.skill
+        )?.resourceTitles || [],
+      })),
+    };
+
+    res.json({ analysis: analysisWithTasks, progressId: progressDoc._id, progress: progressDoc });
   } catch (err) {
     next(err);
   }
@@ -68,6 +103,21 @@ router.get("/progress", async (req, res, next) => {
       .populate("companyId", "name industry")
       .lean();
     res.json({ count: docs.length, progress: docs });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/ai/progress/:id — get a single saved analysis (for reopening).
+router.get("/progress/:id", async (req, res, next) => {
+  try {
+    const doc = await PrepProgress.findOne({
+      _id: req.params.id,
+      studentId: req.studentId,
+    }).populate("companyId", "name industry").lean();
+
+    if (!doc) return res.status(404).json({ error: "Analysis not found." });
+    res.json({ progress: doc });
   } catch (err) {
     next(err);
   }
@@ -94,6 +144,69 @@ router.put("/progress/:id/toggle", async (req, res, next) => {
     await doc.save();
 
     res.json({ task: { _id: task._id, skill: task.skill, done: task.done } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/ai/progress/:id/save — mark an analysis as explicitly saved.
+router.post("/progress/:id/save", async (req, res, next) => {
+  try {
+    const { title } = req.body || {};
+    const doc = await PrepProgress.findOne({
+      _id: req.params.id,
+      studentId: req.studentId,
+    });
+    if (!doc) return res.status(404).json({ error: "Analysis not found." });
+
+    doc.saved = true;
+    if (title && typeof title === "string") {
+      doc.title = title.trim().slice(0, 120);
+    } else if (!doc.title) {
+      const company = await Company.findById(doc.companyId).lean();
+      doc.title = `${company?.name || "Skill Gap"} — ${new Date().toLocaleDateString()}`;
+    }
+    await doc.save();
+
+    res.json({ progress: doc.toObject() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/ai/progress/:id/rename — rename a saved analysis.
+router.put("/progress/:id/rename", async (req, res, next) => {
+  try {
+    const { title } = req.body || {};
+    if (!title || typeof title !== "string" || !title.trim()) {
+      return res.status(400).json({ error: "title is required." });
+    }
+    const doc = await PrepProgress.findOne({
+      _id: req.params.id,
+      studentId: req.studentId,
+    });
+    if (!doc) return res.status(404).json({ error: "Analysis not found." });
+
+    doc.title = title.trim().slice(0, 120);
+    await doc.save();
+
+    res.json({ progress: doc.toObject() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/ai/progress/:id — delete a saved analysis.
+router.delete("/progress/:id", async (req, res, next) => {
+  try {
+    const result = await PrepProgress.deleteOne({
+      _id: req.params.id,
+      studentId: req.studentId,
+    });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Analysis not found." });
+    }
+    res.json({ message: "Analysis deleted." });
   } catch (err) {
     next(err);
   }

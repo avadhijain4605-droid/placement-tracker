@@ -161,8 +161,8 @@ export default function Dashboard() {
                         <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-xs text-slate-500">{tasksDone}/{totalT} tasks</span>
-                      <Link to="/skill-gap" className="text-sm font-medium text-brand-600">
-                        Re-run
+                      <Link to="/skill-gap" state={{ reopenId: p._id }} className="text-sm font-medium text-brand-600">
+                        Open
                       </Link>
                     </div>
                   </div>

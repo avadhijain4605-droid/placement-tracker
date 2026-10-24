@@ -82,8 +82,15 @@ export const api = {
   skillGap: (companyId) =>
     request("/ai/skill-gap", { method: "POST", body: { companyId } }),
   listProgress: () => request("/ai/progress"),
+  getProgress: (id) => request(`/ai/progress/${id}`),
   toggleTask: (progressId, taskId) =>
     request(`/ai/progress/${progressId}/toggle`, { method: "PUT", body: { taskId } }),
+  saveAnalysis: (progressId, title) =>
+    request(`/ai/progress/${progressId}/save`, { method: "POST", body: { title } }),
+  renameAnalysis: (progressId, title) =>
+    request(`/ai/progress/${progressId}/rename`, { method: "PUT", body: { title } }),
+  deleteAnalysis: (progressId) =>
+    request(`/ai/progress/${progressId}`, { method: "DELETE" }),
 
   // ── Placement Cell module ──────────────────────────────────────────
 

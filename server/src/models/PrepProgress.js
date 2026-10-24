@@ -26,6 +26,7 @@ const prepProgressSchema = new Schema(
       required: true,
       index: true,
     },
+    title: { type: String, trim: true, default: "" },
     matched: [{ type: String, trim: true }],
     missing: [{ type: String, trim: true }],
     eligibility: [
@@ -40,6 +41,7 @@ const prepProgressSchema = new Schema(
     readiness: { type: Number, min: 0, max: 100, default: null },
     readinessFormula: { type: String, default: "" },
     tasks: [prepTaskSchema],
+    saved: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

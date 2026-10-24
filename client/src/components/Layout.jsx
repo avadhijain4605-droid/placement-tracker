@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
-import { api } from "../api.js";
 
 const studentNav = [
   { to: "/dashboard", label: "Dashboard" },
@@ -33,7 +32,6 @@ const superAdminNav = [
 export default function Layout() {
   const { student, logout } = useAuth();
   const navigate = useNavigate();
-  const [annCount, setAnnCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isAdmin = student?.role === "admin" || student?.role === "super_admin";
@@ -42,14 +40,6 @@ export default function Layout() {
   const navItems = isAdmin
     ? [...adminNav, ...(isSuperAdmin ? superAdminNav : [])]
     : studentNav;
-
-  useEffect(() => {
-    if (student && !isAdmin) {
-      api.listAnnouncements()
-        .then((data) => setAnnCount(data.count || 0))
-        .catch(() => {});
-    }
-  }, [student, isAdmin]);
 
   if (isAdmin) {
     return (
@@ -147,20 +137,6 @@ export default function Layout() {
           </nav>
 
           <div className="flex items-center gap-2">
-            {student && (
-              <Link
-                to="/announcements"
-                className="relative p-2 rounded-lg text-slate-600 hover:bg-slate-100"
-                title="Announcements"
-              >
-                <span className="text-lg">📢</span>
-                {annCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 inline-flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                    {annCount > 99 ? "99+" : annCount}
-                  </span>
-                )}
-              </Link>
-            )}
             {student ? (
               <>
                 <span className="text-sm text-slate-600 hidden sm:inline">{student.name}</span>

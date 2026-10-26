@@ -1,0 +1,11 @@
+
+{
+  "name": "placement-tracker",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev --prefix client\" \"npm run dev --prefix server\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

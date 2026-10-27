@@ -117,7 +117,7 @@ export default function Companies() {
         <div className="card p-6 mb-6">
           <h3 className="text-lg font-semibold text-slate-900 mb-2">AI Company Intelligence</h3>
           <p className="text-sm text-slate-500 mb-4">
-            Type a company name and Gemini will generate a full intelligence profile — industry, roles, eligibility, required skills, OA patterns, interview questions, and prep resources. Review it, then save to the database.
+            Type a company name and PathAI will generate a full intelligence profile — industry, roles, eligibility, required skills, OA patterns, interview questions, and prep resources. Review it, then save to the database.
           </p>
 
           {saveSuccess && (
@@ -142,7 +142,7 @@ export default function Companies() {
           {enriching && (
             <div className="flex items-center gap-3 py-8">
               <div className="w-5 h-5 border-2 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
-              <p className="text-sm text-slate-500">Gemini is researching the company and building an intelligence profile...</p>
+              <p className="text-sm text-slate-500">PathAI is researching the company and building an intelligence profile...</p>
             </div>
           )}
 

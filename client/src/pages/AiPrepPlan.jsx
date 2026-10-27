@@ -110,7 +110,7 @@ export default function AiPrepPlan() {
           <button type="submit" className="btn-primary" disabled={busy || companiesLoading}>
             {busy ? "Generating…" : "Generate plan"}
           </button>
-          {busy && <span className="text-sm text-slate-500">Gemini is building your roadmap…</span>}
+          {busy && <span className="text-sm text-slate-500">PathAI is building your roadmap…</span>}
         </div>
       </form>
 

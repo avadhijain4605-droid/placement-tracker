@@ -45,7 +45,7 @@ export default function Dashboard() {
   if (isAdmin) {
     return (
       <div>
-        <PageHeader title="Placement Cell Dashboard" subtitle="Manage all placement activities." />
+        <PageHeader title="Placify Admin Dashboard" subtitle="Manage all placement activities." />
         <section className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {quickLinks.map((q) => (
             <Link key={q.to} to={q.to} className="card p-5 hover:shadow-md hover:border-brand-200 transition group">

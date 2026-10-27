@@ -55,7 +55,7 @@ const studentSections = [
     items: [
       { to: "/companies", label: "Companies", icon: "building" },
       { to: "/skill-gap", label: "Skill Gap Analysis", icon: "gap" },
-      { to: "/ai-plan", label: "AI Prep Plan", icon: "ai" },
+      { to: "/ai-plan", label: "PathAI Prep Plan", icon: "ai" },
     ],
   },
 ];
@@ -76,7 +76,7 @@ const adminSections = [
       { to: "/admin/students", label: "Students", icon: "students" },
       { to: "/admin/experiences", label: "Experiences", icon: "experiences" },
       { to: "/admin/announcements", label: "Announcements", icon: "megaphone" },
-      { to: "/admin/analytics", label: "AI Analytics", icon: "chart" },
+      { to: "/admin/analytics", label: "PathAI Analytics", icon: "chart" },
     ],
   },
 ];
@@ -105,11 +105,11 @@ function Sidebar({ collapsed, sections, student, isSuperAdmin, isAdmin, onNaviga
           className="flex items-center gap-2 shrink-0"
         >
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white font-bold text-sm">
-            PT
+            P
           </span>
           {!collapsed && (
             <span className="font-semibold text-white text-sm">
-              {isAdmin ? "Placement Cell" : "Placement Tracker"}
+              {isAdmin ? "Placify Admin" : "Placify"}
             </span>
           )}
         </Link>
@@ -184,7 +184,7 @@ const PAGE_TITLES = {
   "/applications": "My Applications",
   "/companies": "Companies",
   "/skill-gap": "Skill Gap Analysis",
-  "/ai-plan": "AI Prep Plan",
+  "/ai-plan": "PathAI Prep Plan",
   "/admin/dashboard": "Admin Dashboard",
   "/admin/companies": "Manage Companies",
   "/admin/drives": "Manage Drives",
@@ -192,7 +192,7 @@ const PAGE_TITLES = {
   "/admin/students": "Manage Students",
   "/admin/experiences": "Manage Experiences",
   "/admin/announcements": "Manage Announcements",
-  "/admin/analytics": "AI Analytics",
+  "/admin/analytics": "PathAI Analytics",
   "/admin/users": "Manage Users",
   "/admin/audit": "Audit Log",
 };
@@ -203,7 +203,7 @@ function getPageTitle(pathname) {
   if (pathname.startsWith("/drives/")) return "Drive Details";
   if (pathname.startsWith("/admin/drives/new")) return "New Drive";
   if (pathname.startsWith("/admin/drives/") && pathname.endsWith("/edit")) return "Edit Drive";
-  return "Placement Tracker";
+  return "Placify";
 }
 
 // ── Main Layout ──────────────────────────────────────────────────
@@ -242,8 +242,8 @@ export default function Layout() {
         <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-slate-200">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
             <Link to="/dashboard" className="flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white font-bold">PT</span>
-              <span className="font-semibold text-slate-900">Placement Tracker</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-white font-bold">P</span>
+              <span className="font-semibold text-slate-900">Placify</span>
             </Link>
             <div className="flex items-center gap-2">
               <Link to="/login" className="btn-secondary">Log in</Link>
@@ -358,7 +358,7 @@ export default function Layout() {
         {/* Footer */}
         <footer className="border-t border-slate-200 bg-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 text-sm text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <span>AI-Powered Placement Tracker</span>
+            <span>Placify — AI-Powered Placement Platform</span>
             <span className="text-xs text-slate-400">Final-year B.Tech project</span>
           </div>
         </footer>

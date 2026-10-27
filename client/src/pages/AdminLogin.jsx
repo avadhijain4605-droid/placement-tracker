@@ -39,7 +39,7 @@ export default function AdminLogin() {
 
   return (
     <div className="mx-auto max-w-md">
-      <PageHeader title="Admin Login" subtitle="Placement Cell administration access." />
+      <PageHeader title="Admin Login" subtitle="Placify administration access." />
       <form className="card p-6 space-y-4" onSubmit={handleSubmit}>
         <div>
           <label className="label" htmlFor="email">Admin Email</label>

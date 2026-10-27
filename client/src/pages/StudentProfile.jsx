@@ -632,7 +632,7 @@ export default function StudentProfile() {
           </button>
           {profileComplete && (
             <Link to="/ai-plan" className="btn-secondary">
-              Go to AI Prep Plan →
+              Go to PathAI Prep Plan →
             </Link>
           )}
           {profileComplete && (

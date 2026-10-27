@@ -46,7 +46,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <PageHeader title="Placement Cell Dashboard" subtitle="Overview of placement activities, students, and statistics." />
+      <PageHeader title="Placify Admin Dashboard" subtitle="Overview of placement activities, students, and statistics." />
 
       {error && <div className="card p-4 border-red-200 bg-red-50 mb-4"><p className="text-sm text-red-700">{error}</p></div>}
 

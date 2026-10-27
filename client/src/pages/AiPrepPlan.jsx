@@ -64,7 +64,7 @@ export default function AiPrepPlan() {
   return (
     <div>
       <PageHeader
-        title="AI Preparation Plan"
+        title="PathAI Preparation Plan"
         subtitle="A personalized prep roadmap generated from your profile and the company's requirements."
       />
 
